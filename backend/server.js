@@ -22,12 +22,23 @@ connectDb();
 const allowedOrigins = [
   "http://localhost:3000",
   process.env.CLIENT_URL
-];
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    
+    // Normalize and check whitelisted domains
+    const isAllowed = allowedOrigins.some((allowed) => {
+      const a = allowed.replace(/\/$/, "");
+      const o = origin.replace(/\/$/, "");
+      return a === o;
+    });
+
+    // Automatically allow Vercel subdomains (preview & production deployments)
+    const isVercel = origin.endsWith(".vercel.app");
+
+    if (isAllowed || isVercel) {
       return callback(null, true);
     } else {
       return callback(new Error("Not allowed by CORS"));
