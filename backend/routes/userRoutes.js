@@ -29,7 +29,7 @@ router.put(
   role("admin"),
   [
     body("email").optional().isEmail().withMessage("Valid email is required"),
-    body("password").optional().isLength({ min: 6 }).withMessage("Password min 6 chars"),
+    body("password").optional({ values: "falsy" }).isLength({ min: 6 }).withMessage("Password min 6 chars"),
     body("role").optional().isIn(["admin", "librarian", "student"]).withMessage("Invalid role"),
   ],
   validate,

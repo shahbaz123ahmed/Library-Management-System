@@ -1,5 +1,7 @@
 const Book = require("../models/Book");
 const Transaction = require("../models/Transaction");
+const { parseNaturalQuery } = require("../utils/queryParser");
+const { getStringSimilarity, normalizeCategory } = require("../utils/similarity");
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -22,7 +24,7 @@ const createBook = async (req, res, next) => {
     const book = await Book.create({
       title,
       author,
-      category,
+      category: normalizeCategory(category), // Normalize category on creation
       isbn,
       quantity,
       available: quantity,
@@ -51,13 +53,9 @@ const listBooks = async (req, res, next) => {
 
     // Role-based book visibility
     if (user.role === "admin") {
-      // Admin sees ALL books (global + all librarian workspaces)
       query = {};
     } 
     else if (user.role === "librarian") {
-      // Librarian sees:
-      // 1. Global books (admin added) - read-only
-      // 2. Books they personally created
       query = {
         $or: [
           { isGlobal: true },
@@ -66,41 +64,139 @@ const listBooks = async (req, res, next) => {
       };
     } 
     else {
-      // Student sees only global books
       query = { isGlobal: true };
     }
 
-    // Apply filters
-    if (req.query.category) {
-      query.category = req.query.category;
+    // Apply natural language query parsing if search query is provided
+    let searchStr = req.query.search || "";
+    let parsed = { search: searchStr, filters: {}, sort: null };
+    
+    if (searchStr) {
+      parsed = parseNaturalQuery(searchStr);
     }
 
-    if (req.query.availability === "available") {
+    // Blend query params with parsed NLP filters (explicit query params take precedence)
+    const categoryFilter = req.query.category || parsed.filters.category;
+    const availabilityFilter = req.query.availability || parsed.filters.availability;
+    const authorFilter = req.query.author || parsed.filters.author;
+    const sortCriteria = req.query.sort || parsed.sort;
+    const keywordSearch = parsed.search;
+
+    if (categoryFilter) {
+      query.category = normalizeCategory(categoryFilter);
+    }
+
+    if (availabilityFilter === "available") {
       query.available = { $gt: 0 };
     }
 
-    if (req.query.search) {
-      const search = req.query.search;
-      query.$or = [
-        { title: new RegExp(search, "i") },
-        { author: new RegExp(search, "i") },
-        { isbn: new RegExp(search, "i") },
-      ];
+    if (authorFilter) {
+      query.author = new RegExp(escapeRegex(authorFilter), "i");
     }
 
-    const [items, total] = await Promise.all([
-      Book.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
-      Book.countDocuments(query),
-    ]);
+    // Regex match setup for key fields (ISBN / title / author)
+    let regexSearchQuery = null;
+    if (keywordSearch) {
+      regexSearchQuery = {
+        $or: [
+          { title: new RegExp(escapeRegex(keywordSearch), "i") },
+          { author: new RegExp(escapeRegex(keywordSearch), "i") },
+          { isbn: new RegExp(escapeRegex(keywordSearch), "i") },
+        ]
+      };
+    }
 
-    // Add flag to indicate if book is editable by current user
-    const itemsWithPermissions = items.map(book => ({
+    // Build the final Mongoose query
+    let finalQuery = { ...query };
+    if (regexSearchQuery) {
+      if (finalQuery.$or) {
+        finalQuery = { $and: [ { $or: finalQuery.$or }, regexSearchQuery ] };
+      } else {
+        finalQuery.$or = regexSearchQuery.$or;
+      }
+    }
+
+    // Retrieve matching records
+    let items = await Book.find(finalQuery);
+
+    // Fuzzy matching fallback if regular search returns nothing
+    if (items.length === 0 && keywordSearch) {
+      const scopeQuery = { ...query };
+      const scopeBooks = await Book.find(scopeQuery);
+
+      const ratedBooks = scopeBooks.map(book => {
+        const titleSim = getStringSimilarity(book.title, keywordSearch);
+        const authorSim = getStringSimilarity(book.author, keywordSearch);
+        const catSim = getStringSimilarity(book.category, keywordSearch);
+        const maxSim = Math.max(titleSim, authorSim, catSim);
+        return { book, score: maxSim };
+      });
+
+      const fuzzyMatches = ratedBooks
+        .filter(item => item.score > 0.3)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.book);
+
+      items = fuzzyMatches;
+    }
+
+    // Multi-criteria ranking and sorting
+    items.sort((a, b) => {
+      // 1. Availability sorting (always put available books first)
+      const aAvail = a.available > 0 ? 1 : 0;
+      const bAvail = b.available > 0 ? 1 : 0;
+      if (aAvail !== bAvail) {
+        return bAvail - aAvail;
+      }
+
+      // 2. Specific sorting criteria requested
+      if (sortCriteria === "newest") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      if (sortCriteria === "oldest") {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      if (sortCriteria === "popularity") {
+        return (b.borrowCount || 0) - (a.borrowCount || 0);
+      }
+      if (sortCriteria === "rating") {
+        return (b.rating || 0) - (a.rating || 0);
+      }
+
+      // 3. Relevance similarity score
+      if (keywordSearch) {
+        const aSim = Math.max(
+          getStringSimilarity(a.title, keywordSearch),
+          getStringSimilarity(a.author, keywordSearch)
+        );
+        const bSim = Math.max(
+          getStringSimilarity(b.title, keywordSearch),
+          getStringSimilarity(b.author, keywordSearch)
+        );
+        if (Math.abs(aSim - bSim) > 0.05) {
+          return bSim - aSim;
+        }
+      }
+
+      // 4. Default: popularity
+      return (b.borrowCount || 0) - (a.borrowCount || 0);
+    });
+
+    const total = items.length;
+    const paginatedItems = items.slice(skip, skip + limit);
+
+    const itemsWithPermissions = paginatedItems.map(book => ({
       ...book.toObject(),
       isEditable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString()),
       isDeletable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString() && !book.isGlobal),
     }));
 
-    res.json({ items: itemsWithPermissions, total, page, pages: Math.ceil(total / limit) });
+    res.json({
+      items: itemsWithPermissions,
+      total,
+      page,
+      pages: Math.ceil(total / limit)
+    });
   } catch (error) {
     next(error);
   }
@@ -354,6 +450,9 @@ const listMostIssued = async (req, res, next) => {
           isbn: "$book.isbn",
           available: "$book.available",
           quantity: "$book.quantity",
+          coverImage: "$book.coverImage",
+          category: "$book.category",
+          description: "$book.description",
         },
       },
     ]);
@@ -362,6 +461,30 @@ const listMostIssued = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+const https = require("https");
+
+const httpsGet = (url) => {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { "User-Agent": "LMS-App/1.0" } }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => { data += chunk; });
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error("Failed to parse JSON response"));
+          }
+        } else {
+          reject(new Error(`Request failed with status ${res.statusCode}`));
+        }
+      });
+    }).on("error", (err) => {
+      reject(err);
+    });
+  });
 };
 
 const lookupAuthor = async (req, res, next) => {
@@ -379,15 +502,76 @@ const lookupAuthor = async (req, res, next) => {
       return res.json({ author: exactMatch.author, source: "local", title: exactMatch.title });
     }
 
-    const response = await fetch(
-      `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`
-    );
-    if (!response.ok) {
-      return res.json({ author: null, source: "openlibrary" });
+    try {
+      const data = await httpsGet(
+        `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`
+      );
+      const docs = data?.docs || [];
+      // Find the first document that actually has author details
+      const docWithAuthor = docs.find(d => d.author_name && d.author_name.length > 0);
+      const author = docWithAuthor?.author_name?.[0] || null;
+      return res.json({ author, source: "openlibrary" });
+    } catch (fetchError) {
+      console.error("⚠️ OpenLibrary fetch failed:", fetchError.message);
+      return res.json({ author: null, source: "openlibrary", error: fetchError.message });
     }
-    const data = await response.json();
-    const author = data?.docs?.[0]?.author_name?.[0] || null;
-    return res.json({ author, source: "openlibrary" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getRecommendations = async (req, res, next) => {
+  try {
+    const { category, bookId } = req.query;
+    const user = req.user;
+
+    let query = {};
+    if (user.role === "admin") {
+      query = {};
+    } else if (user.role === "librarian") {
+      query = {
+        $or: [
+          { isGlobal: true },
+          { workspaceId: user._id }
+        ]
+      };
+    } else {
+      query = { isGlobal: true };
+    }
+
+    // 1. Trending Books: Overall most borrowed books (borrowCount), prioritize available > 0
+    const trending = await Book.find(query)
+      .sort({ available: -1, borrowCount: -1, createdAt: -1 })
+      .limit(6);
+
+    let similar = [];
+    let popularInCategory = [];
+
+    if (category) {
+      const normalizedCat = normalizeCategory(category);
+      
+      const catQuery = { ...query, category: normalizedCat };
+      const mongoose = require("mongoose");
+      if (bookId && mongoose.Types.ObjectId.isValid(bookId)) {
+        catQuery._id = { $ne: bookId };
+      }
+
+      // 2. Similar Books: Same category, prioritize available
+      similar = await Book.find(catQuery)
+        .sort({ available: -1, createdAt: -1 })
+        .limit(6);
+
+      // 3. Popular in this category: Same category, sorted by borrowCount, prioritize available
+      popularInCategory = await Book.find(catQuery)
+        .sort({ available: -1, borrowCount: -1, createdAt: -1 })
+        .limit(6);
+    }
+
+    res.json({
+      trending,
+      similar,
+      popularInCategory
+    });
   } catch (error) {
     next(error);
   }
@@ -399,9 +583,10 @@ module.exports = {
   getBook,
   updateBook,
   deleteBook,
-  copyBookToWorkspace,  // NEW
+  copyBookToWorkspace,
   suggestBooks,
   listCategories,
   listMostIssued,
   lookupAuthor,
+  getRecommendations,
 };

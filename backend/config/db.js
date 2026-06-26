@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const cleanDatabase = require("../utils/dbCleaner");
 
 const connectDb = async () => {
   try {
@@ -8,6 +9,9 @@ const connectDb = async () => {
     }
     await mongoose.connect(uri);
     console.log("MongoDB connected");
+    
+    // Run DB cleanup & normalization
+    cleanDatabase();
   } catch (error) {
     console.error("MongoDB connection error:", error.message);
     process.exit(1);

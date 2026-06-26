@@ -85,6 +85,7 @@ const approveRequest = async (req, res, next) => {
     await transaction.save();
 
     book.available -= 1;
+    book.borrowCount = (book.borrowCount || 0) + 1;
     await book.save();
 
     res.json({ transaction });
@@ -128,6 +129,7 @@ const issueBook = async (req, res, next) => {
     const transaction = await Transaction.create(txData);
 
     book.available -= 1;
+    book.borrowCount = (book.borrowCount || 0) + 1;
     await book.save();
 
     res.status(201).json({ transaction });
@@ -179,7 +181,11 @@ const listTransactions = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     const query = {};
-    if (req.query.userId) query.userId = req.query.userId;
+    if (req.user.role === "student") {
+      query.userId = req.user._id;
+    } else if (req.query.userId) {
+      query.userId = req.query.userId;
+    }
     if (req.query.status) query.status = req.query.status;
     if (req.query.excludeStatus) query.status = { $ne: req.query.excludeStatus };
     if (req.query.search) {

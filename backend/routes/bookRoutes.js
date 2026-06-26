@@ -15,6 +15,7 @@ const {
   listCategories,
   listMostIssued,
   lookupAuthor,
+  getRecommendations,
 } = require("../controllers/bookController");
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.get("/suggest", auth, suggestBooks);
 router.get("/categories", auth, listCategories);
 router.get("/most-issued", auth, listMostIssued);
 router.get("/lookup-author", auth, lookupAuthor);
+router.get("/recommendations", auth, getRecommendations);
 router.get("/:id", auth, getBook);
 
 // 👇 ADD THIS NEW ROUTE - Copy admin book to librarian workspace
