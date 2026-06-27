@@ -193,12 +193,14 @@ export default function NotificationsPage() {
               exit={{ opacity: 0, x: 40, scale: 0.95 }}
               transition={{ delay: index * 0.04, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -2, boxShadow: isDark ? "0 8px 30px rgba(0,0,0,0.3)" : "0 8px 30px rgba(15,23,42,0.1)" }}
-              className={`flex flex-col gap-4 rounded-2xl border p-5 transition-colors duration-300 md:flex-row md:items-center md:justify-between ${
-                isDark
-                  ? "bg-slate-800/60 border-amber-500/20 backdrop-blur-sm"
-                  : "bg-white border-amber-200/60 shadow-sm"
-              }`}
+              className="rounded-2xl bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 p-[1.5px] transition-all duration-300"
             >
+              <div className={`flex flex-col gap-4 rounded-[15px] p-5 transition-colors duration-300 md:flex-row md:items-center md:justify-between ${
+                isDark
+                  ? "bg-slate-900/95 backdrop-blur-sm"
+                  : "bg-white"
+              }`}
+              >
               {/* Left: request info */}
               <div className="flex items-start gap-4">
                 {/* Pulsing dot */}
@@ -259,6 +261,7 @@ export default function NotificationsPage() {
                 >
                   ✕ Reject
                 </motion.button>
+              </div>
               </div>
             </motion.div>
           ))}
