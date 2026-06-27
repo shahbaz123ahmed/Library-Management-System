@@ -53,15 +53,25 @@ const listBooks = async (req, res, next) => {
 
     // Role-based book visibility
     if (user.role === "admin") {
-      query = {};
+      if (req.query.globalOnly === "true") {
+        query = { isGlobal: true };
+      } else {
+        query = {};
+      }
     } 
     else if (user.role === "librarian") {
-      query = {
-        $or: [
-          { isGlobal: true },
-          { workspaceId: user._id }
-        ]
-      };
+      if (req.query.workspaceOnly === "true") {
+        query = { workspaceId: user._id };
+      } else if (req.query.globalOnly === "true") {
+        query = { isGlobal: true };
+      } else {
+        query = {
+          $or: [
+            { isGlobal: true },
+            { workspaceId: user._id }
+          ]
+        };
+      }
     } 
     else {
       query = { isGlobal: true };
@@ -185,11 +195,23 @@ const listBooks = async (req, res, next) => {
     const total = items.length;
     const paginatedItems = items.slice(skip, skip + limit);
 
-    const itemsWithPermissions = paginatedItems.map(book => ({
-      ...book.toObject(),
-      isEditable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString()),
-      isDeletable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString() && !book.isGlobal),
-    }));
+    let copiedBookIds = [];
+    if (user.role === "librarian") {
+      copiedBookIds = await Book.find({
+        workspaceId: user._id,
+        sourceBookId: { $ne: null }
+      }).distinct("sourceBookId");
+    }
+
+    const itemsWithPermissions = paginatedItems.map(book => {
+      const bookObj = book.toObject();
+      return {
+        ...bookObj,
+        isEditable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString()),
+        isDeletable: user.role === "admin" || (user.role === "librarian" && book.workspaceId?.toString() === user._id.toString() && !book.isGlobal),
+        isAlreadyCopied: user.role === "librarian" && book.isGlobal && copiedBookIds.map(id => id.toString()).includes(book._id.toString()),
+      };
+    });
 
     res.json({
       items: itemsWithPermissions,
@@ -341,7 +363,7 @@ const copyBookToWorkspace = async (req, res, next) => {
     });
 
     if (existingCopy) {
-      return res.json({ book: existingCopy, message: "Book already in your workspace" });
+      return res.status(400).json({ message: "Already added this book to your workspace" });
     }
 
     // Create librarian's personal copy

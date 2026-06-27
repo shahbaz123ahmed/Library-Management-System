@@ -197,6 +197,7 @@ export default function Topbar({ title }) {
     { label: "My Shelf", href: "/my-shelf", roles: ["student"] },
     { label: "Notifications", href: "/notifications", roles: ["admin", "librarian"] },
     { label: "Transactions", href: "/transactions", roles: ["admin", "librarian"] },
+    { label: "Admin Catalog", href: "/admin-catalog", roles: ["librarian"] },
     { label: "Users", href: "/users", roles: ["admin"] },
   ];
 

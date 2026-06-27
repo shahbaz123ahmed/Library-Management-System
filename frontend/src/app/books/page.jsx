@@ -53,12 +53,14 @@ export default function BooksPage() {
   }, [loading, user, router]);
 
   const fetchBooks = useCallback(async () => {
-    const { data } = await api.get("/books", {
-      params: { page, limit: 1000, search, category, availability },
-    });
+    const params = { page, limit: 1000, search, category, availability };
+    if (user?.role === "librarian") {
+      params.workspaceOnly = "true";
+    }
+    const { data } = await api.get("/books", { params });
     setItems(data.items);
     setPages(data.pages);
-  }, [page, search, category, availability]);
+  }, [page, search, category, availability, user?.role]);
 
   useEffect(() => {
     if (!user) return;
