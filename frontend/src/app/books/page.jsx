@@ -595,21 +595,18 @@ export default function BooksPage() {
             initial={{ opacity: 0, y: 50, rotateX: -15 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 0.5, delay: index * 0.05 }}
-            whileHover={{
-              y: -8,
-              rotateX: 5,
-              scale: 1.02,
-              transition: { duration: 0.2 },
-            }}
             style={{ animationDelay: `${index * 60}ms` }}
-            className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 hover:scale-[1.03] preserve-3d flex flex-col"
+            whileHover="hover"
+            className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
           >
             <div className="rounded-2xl bg-white/80 p-4 backdrop-blur-md text-red-600 flex-1 flex flex-col justify-between">
               <div className="flex items-start gap-4">
                 <motion.div
                   className="flex w-35 shrink-0 flex-col items-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  variants={{
+                    hover: { scale: 1.05 }
+                  }}
+                  transition={{ duration: 0.3 }}
                 >
                   <div className="h-45 w-35 rounded-[15px] bg-slate-100 overflow-hidden">
                     {book.coverImage ? (
@@ -619,13 +616,21 @@ export default function BooksPage() {
                         ).replace("/api", "")}${book.coverImage}`}
                         alt={book.title}
                         className="h-full w-full rounded-[15px] object-cover"
-                        whileHover={{ scale: 1.1 }}
+                        variants={{
+                          hover: { scale: 1.15 }
+                        }}
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400">
+                      <motion.div 
+                        className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400"
+                        variants={{
+                          hover: { scale: 1.15 }
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
                         No cover
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                   <p className="text-xs font-semibold text-slate-500">{book.category}</p>
