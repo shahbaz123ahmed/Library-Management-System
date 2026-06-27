@@ -600,26 +600,41 @@ export default function BooksPage() {
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 0.5, delay: index * 0.05 }}
             style={{ animationDelay: `${index * 60}ms` }}
+            whileHover="hover"
             className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
           >
             <div className="rounded-2xl bg-white/80 p-4 backdrop-blur-md text-red-600 flex-1 flex flex-col justify-between">
               <div className="flex items-start gap-4">
-                <div
-                  className="flex w-35 shrink-0 flex-col items-center gap-2 transition-transform duration-300 group-hover:scale-105"
+                <motion.div
+                  className="flex w-35 shrink-0 flex-col items-center gap-2"
+                  variants={{
+                    hover: { scale: 1.05 }
+                  }}
+                  transition={{ duration: 0.3 }}
                 >
                   <div className="h-45 w-35 rounded-[15px] bg-slate-100 overflow-hidden">
                     {book.coverImage ? (
-                      <img
+                      <motion.img
                         src={`${(
                           process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
                         ).replace("/api", "")}${book.coverImage}`}
                         alt={book.title}
-                        className="h-full w-full rounded-[15px] object-cover transition-transform duration-300 group-hover:scale-110"
+                        className="h-full w-full rounded-[15px] object-cover"
+                        variants={{
+                          hover: { scale: 1.15 }
+                        }}
+                        transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400 transition-transform duration-300 group-hover:scale-110">
+                      <motion.div 
+                        className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400"
+                        variants={{
+                          hover: { scale: 1.15 }
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
                         No cover
-                      </div>
+                      </motion.div>
                     )}
                   </div>
                   <p className="text-xs font-semibold text-slate-500">{book.category}</p>
@@ -642,7 +657,7 @@ export default function BooksPage() {
                       ✏️ Your Workspace
                     </motion.span>
                   )}
-                </div>
+                </motion.div>
                 <div className="flex-1 text-left">
                   <h3 className="text-lg font-semibold text-slate-900">{book.title}</h3>
                   <p className="text-sm text-slate-500">{book.author}</p>
