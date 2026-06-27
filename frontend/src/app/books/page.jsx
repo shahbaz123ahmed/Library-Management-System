@@ -392,16 +392,19 @@ export default function BooksPage() {
 
   return (
     <AppLayout title="Books">
-      {/* ── Premium Hero Banner ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className={`relative mb-8 overflow-hidden rounded-3xl p-8 shadow-lg transition-colors duration-300 ${isDark
-          ? "bg-linear-to-br from-slate-800 via-slate-900 to-slate-800 border border-slate-700/50"
-          : "bg-linear-to-r from-blue-600 via-teal-600 to-green-600"
-          }`}
-      >
+      <div className={`sticky top-0 z-20 -mt-6 pt-6 pb-4 -mx-6 px-6 md:-mx-10 md:px-10 transition-colors duration-300 ${
+        isDark ? "bg-slate-900" : "bg-[#f6f1e7]"
+      }`}>
+        {/* ── Premium Hero Banner ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className={`relative mb-8 overflow-hidden rounded-3xl p-8 shadow-lg transition-colors duration-300 ${isDark
+            ? "bg-linear-to-br from-slate-800 via-slate-900 to-slate-800 border border-slate-700/50"
+            : "bg-linear-to-r from-blue-600 via-teal-600 to-green-600"
+            }`}
+        >
         {/* Decorative floating orbs */}
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0], scale: [1, 1.15, 1] }}
@@ -584,6 +587,7 @@ export default function BooksPage() {
           </motion.span>
         </div>
       </motion.div>
+      </div>
 
       <div className="mt-6 grid justify-center gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((book, index) => (
@@ -595,35 +599,25 @@ export default function BooksPage() {
             initial={{ opacity: 0, y: 50, rotateX: -15 }}
             animate={{ opacity: 1, y: 0, rotateX: 0 }}
             transition={{ duration: 0.5, delay: index * 0.05 }}
-            whileHover={{
-              y: -8,
-              rotateX: 5,
-              scale: 1.02,
-              transition: { duration: 0.2 },
-            }}
             style={{ animationDelay: `${index * 60}ms` }}
-            className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 hover:scale-[1.03] preserve-3d flex flex-col"
+            className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
           >
             <div className="rounded-2xl bg-white/80 p-4 backdrop-blur-md text-red-600 flex-1 flex flex-col justify-between">
               <div className="flex items-start gap-4">
-                <motion.div
-                  className="flex w-35 shrink-0 flex-col items-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                <div
+                  className="flex w-35 shrink-0 flex-col items-center gap-2 transition-transform duration-300 group-hover:scale-105"
                 >
                   <div className="h-45 w-35 rounded-[15px] bg-slate-100 overflow-hidden">
                     {book.coverImage ? (
-                      <motion.img
+                      <img
                         src={`${(
                           process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
                         ).replace("/api", "")}${book.coverImage}`}
                         alt={book.title}
-                        className="h-full w-full rounded-[15px] object-cover"
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.3 }}
+                        className="h-full w-full rounded-[15px] object-cover transition-transform duration-300 group-hover:scale-110"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400">
+                      <div className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400 transition-transform duration-300 group-hover:scale-110">
                         No cover
                       </div>
                     )}
@@ -648,7 +642,7 @@ export default function BooksPage() {
                       ✏️ Your Workspace
                     </motion.span>
                   )}
-                </motion.div>
+                </div>
                 <div className="flex-1 text-left">
                   <h3 className="text-lg font-semibold text-slate-900">{book.title}</h3>
                   <p className="text-sm text-slate-500">{book.author}</p>
