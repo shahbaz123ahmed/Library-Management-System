@@ -108,3 +108,11 @@ Frontend runs on http://localhost:3000 and the API on http://localhost:5000.
 
 - Cover images are stored in backend/uploads and served at /uploads.
 - Update .env files before deploying.
+
+
+
+
+
+
+
+
