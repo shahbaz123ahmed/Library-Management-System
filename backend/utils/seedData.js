@@ -6,12 +6,17 @@ const seedData = async () => {
   await User.deleteMany({});
   await Book.deleteMany({});
 
-  const password = await bcrypt.hash("Password123!", 10);
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@example.local";
+  const librarianEmail = process.env.SEED_LIBRARIAN_EMAIL || "librarian@example.local";
+  const studentEmail = process.env.SEED_STUDENT_EMAIL || "student@example.local";
+  const rawPassword = process.env.SEED_USER_PASSWORD || "ChangeMe123!";
+
+  const password = await bcrypt.hash(rawPassword, 10);
 
   const users = await User.insertMany([
-    { name: "Admin User", email: "admin@library.com", password, role: "admin" },
-    { name: "Librarian User", email: "librarian@library.com", password, role: "librarian" },
-    { name: "Student User", email: "student@library.com", password, role: "student" },
+    { name: "Admin User", email: adminEmail, password, role: "admin" },
+    { name: "Librarian User", email: librarianEmail, password, role: "librarian" },
+    { name: "Student User", email: studentEmail, password, role: "student" },
   ]);
 
   const books = await Book.insertMany([
