@@ -24,6 +24,7 @@ const seedData = async () => {
       available: 5,
       coverImage: "",
       description: "A handbook of agile software craftsmanship.",
+      createdBy: users[0]._id
     },
     {
       title: "The Pragmatic Programmer",
@@ -34,6 +35,7 @@ const seedData = async () => {
       available: 3,
       coverImage: "",
       description: "Your journey to mastery.",
+      createdBy: users[0]._id
     },
     {
       title: "Atomic Habits",
@@ -44,6 +46,7 @@ const seedData = async () => {
       available: 4,
       coverImage: "",
       description: "An easy and proven way to build good habits.",
+      createdBy: users[0]._id
     },
   ]);
 

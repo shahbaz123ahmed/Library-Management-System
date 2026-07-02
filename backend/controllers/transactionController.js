@@ -44,6 +44,12 @@ const requestBorrow = async (req, res, next) => {
       { path: "bookId", select: "title author isbn" },
     ]);
 
+    res.locals.audit = {
+      action: "Borrow Request Started",
+      targetBook: book._id,
+      targetBookTitle: book.title
+    };
+
     res.status(201).json({ transaction: populated });
   } catch (error) {
     next(error);
@@ -87,6 +93,16 @@ const approveRequest = async (req, res, next) => {
     book.available -= 1;
     book.borrowCount = (book.borrowCount || 0) + 1;
     await book.save();
+
+    const targetUser = await User.findById(transaction.userId);
+    res.locals.audit = {
+      action: "Book Borrowed",
+      targetBook: book._id,
+      targetBookTitle: book.title,
+      targetUser: targetUser ? targetUser._id : null,
+      targetUserName: targetUser ? targetUser.name : "",
+      metadata: { dueDays }
+    };
 
     res.json({ transaction });
   } catch (error) {
@@ -132,6 +148,15 @@ const issueBook = async (req, res, next) => {
     book.borrowCount = (book.borrowCount || 0) + 1;
     await book.save();
 
+    res.locals.audit = {
+      action: "Book Borrowed",
+      targetBook: book._id,
+      targetBookTitle: book.title,
+      targetUser: user._id,
+      targetUserName: user.name,
+      metadata: { dueDays: days }
+    };
+
     res.status(201).json({ transaction });
   } catch (error) {
     next(error);
@@ -167,6 +192,16 @@ const returnBook = async (req, res, next) => {
     book.available = Math.min(book.quantity, book.available + 1);
     await book.save();
 
+    const targetUser = await User.findById(transaction.userId);
+    res.locals.audit = {
+      action: "Book Returned",
+      targetBook: book._id,
+      targetBookTitle: book.title,
+      targetUser: targetUser ? targetUser._id : null,
+      targetUserName: targetUser ? targetUser.name : "",
+      metadata: { fine }
+    };
+
     res.json({ transaction });
   } catch (error) {
     next(error);
@@ -186,8 +221,18 @@ const listTransactions = async (req, res, next) => {
     } else if (req.query.userId) {
       query.userId = req.query.userId;
     }
-    if (req.query.status) query.status = req.query.status;
-    if (req.query.excludeStatus) query.status = { $ne: req.query.excludeStatus };
+
+    if (req.user.role === "admin") {
+      if (req.query.status === "requested") {
+        return res.json({ items: [], total: 0, page, pages: 0 });
+      }
+      const excluded = ["requested"];
+      if (req.query.excludeStatus) excluded.push(req.query.excludeStatus);
+      query.status = { $nin: excluded };
+    } else {
+      if (req.query.status) query.status = req.query.status;
+      if (req.query.excludeStatus) query.status = { $ne: req.query.excludeStatus };
+    }
     if (req.query.search) {
       const search = String(req.query.search).trim();
       if (search) {
@@ -229,6 +274,16 @@ const rejectRequest = async (req, res, next) => {
       return res.status(400).json({ message: "Only pending requests can be rejected" });
     }
     await transaction.deleteOne();
+    const book = await Book.findById(transaction.bookId);
+    const targetUser = await User.findById(transaction.userId);
+    res.locals.audit = {
+      action: "Borrow Rejected",
+      targetBook: book ? book._id : null,
+      targetBookTitle: book ? book.title : "",
+      targetUser: targetUser ? targetUser._id : null,
+      targetUserName: targetUser ? targetUser.name : ""
+    };
+
     res.json({ message: "Request rejected" });
   } catch (error) {
     next(error);

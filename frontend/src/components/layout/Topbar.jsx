@@ -163,19 +163,26 @@ export default function Topbar({ title }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileMenuRef = useRef(null);
 
-  // Poll badge count every 30s for admin/librarian
+  // Poll badge count every 60s for admin/librarian — use stable primitives as deps to avoid stacking intervals
+  const userId = user?._id;
+  const userRole = user?.role;
+
   useEffect(() => {
-    if (!user || (user.role !== "admin" && user.role !== "librarian")) return;
+    if (!userId || (userRole !== "admin" && userRole !== "librarian")) return;
+
     const fetchBadge = async () => {
+      // Skip fetch when tab is not visible to avoid unnecessary requests
+      if (document.visibilityState === "hidden") return;
       try {
         const { data } = await api.get("/notifications/badge");
         setBadge(data);
       } catch { /* silent fail */ }
     };
+
     fetchBadge();
-    const interval = setInterval(fetchBadge, 30000);
+    const interval = setInterval(fetchBadge, 60000); // 60s poll
     return () => clearInterval(interval);
-  }, [user]);
+  }, [userId, userRole]); // stable primitives — no re-subscribe on every render
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -194,7 +201,7 @@ export default function Topbar({ title }) {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", roles: ["admin", "librarian", "student"] },
     { label: "Books", href: "/books", roles: ["admin", "librarian", "student"] },
-    { label: "My Shelf", href: "/my-shelf", roles: ["student"] },
+    { label: "My Shelf", href: "/my-shelf", roles: ["student", "librarian"] },
     { label: "Notifications", href: "/notifications", roles: ["admin", "librarian"] },
     { label: "Transactions", href: "/transactions", roles: ["admin", "librarian"] },
     { label: "Admin Catalog", href: "/admin-catalog", roles: ["librarian"] },
@@ -347,30 +354,60 @@ export default function Topbar({ title }) {
                     {/* Items */}
                     <div className="divide-y divide-slate-100/10">
                       {/* Borrow requests */}
-                      <button
-                        type="button"
-                        onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
-                        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                          isDark ? "hover:bg-slate-800" : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${
-                          badge.pendingRequests > 0
-                            ? "bg-amber-500/15 text-amber-500"
-                            : isDark ? "bg-slate-800 text-slate-500" : "bg-slate-100 text-slate-400"
-                        }`}>📋</span>
-                        <div className="flex-1">
-                          <p className={`text-xs font-semibold ${ isDark ? "text-slate-200" : "text-slate-800"}`}>Borrow Requests</p>
-                          <p className={`text-[11px] ${ isDark ? "text-slate-500" : "text-slate-400"}`}>
-                            {badge.pendingRequests > 0 ? `${badge.pendingRequests} pending approval` : "All clear"}
-                          </p>
-                        </div>
-                        {badge.pendingRequests > 0 && (
-                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                            {badge.pendingRequests}
-                          </span>
-                        )}
-                      </button>
+                      {user && user.role !== "admin" && (
+                        <button
+                          type="button"
+                          onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            isDark ? "hover:bg-slate-800" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${
+                            badge.pendingRequests > 0
+                              ? "bg-amber-500/15 text-amber-500"
+                              : isDark ? "bg-slate-800 text-slate-500" : "bg-slate-100 text-slate-400"
+                          }`}>📋</span>
+                          <div className="flex-1">
+                            <p className={`text-xs font-semibold ${ isDark ? "text-slate-200" : "text-slate-800"}`}>Borrow Requests</p>
+                            <p className={`text-[11px] ${ isDark ? "text-slate-500" : "text-slate-400"}`}>
+                              {badge.pendingRequests > 0 ? `${badge.pendingRequests} pending approval` : "All clear"}
+                            </p>
+                          </div>
+                          {badge.pendingRequests > 0 && (
+                            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              {badge.pendingRequests}
+                            </span>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Workspace requests for Admin */}
+                      {user && user.role === "admin" && (
+                        <button
+                          type="button"
+                          onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            isDark ? "hover:bg-slate-800" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base ${
+                            badge.workspaceRequests > 0
+                              ? "bg-amber-500/15 text-amber-500"
+                              : isDark ? "bg-slate-800 text-slate-500" : "bg-slate-100 text-slate-400"
+                          }`}>📋</span>
+                          <div className="flex-1">
+                            <p className={`text-xs font-semibold ${ isDark ? "text-slate-200" : "text-slate-800"}`}>Workspace Requests</p>
+                            <p className={`text-[11px] ${ isDark ? "text-slate-500" : "text-slate-400"}`}>
+                              {badge.workspaceRequests > 0 ? `${badge.workspaceRequests} pending approval` : "All clear"}
+                            </p>
+                          </div>
+                          {badge.workspaceRequests > 0 && (
+                            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                              {badge.workspaceRequests}
+                            </span>
+                          )}
+                        </button>
+                      )}
 
                       {/* Overdue books */}
                       <button

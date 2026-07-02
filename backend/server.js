@@ -63,6 +63,8 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
 app.use("/api/wishlist", require("./routes/wishlistRoutes"));
+app.use("/api/activity-logs", require("./routes/activityLogRoutes"));
+app.use("/api/search-history", require("./routes/searchHistoryRoutes"));
 
 // Test route
 app.get("/", (req, res) => {
@@ -77,3 +79,5 @@ const port = process.env.PORT || 5000;
 app.listen(port, () => {
   console.log(`API running on port ${port}`);
 });
+
+// Test comment to check nodemon restart stability

@@ -22,6 +22,11 @@ export default function NotificationsPage() {
   const [pages, setPages] = useState(1);
   const [search, setSearch] = useState("");
 
+  // Librarian inbox (book assigned / request approved notifications)
+  const [inboxItems, setInboxItems] = useState([]);
+  const [inboxPage, setInboxPage] = useState(1);
+  const [inboxPages, setInboxPages] = useState(1);
+
   // Approve modal state
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approveTarget, setApproveTarget] = useState(null);
@@ -29,23 +34,56 @@ export default function NotificationsPage() {
   const [approveFinePerDay, setApproveFinePerDay] = useState("");
 
   useEffect(() => {
-    if (!loading && (!user || (user.role !== "admin" && user.role !== "librarian"))) {
-      router.push("/login");
+    if (!loading) {
+      if (!user) {
+        router.push("/login");
+      } else if (user.role !== "admin" && user.role !== "librarian") {
+        router.push("/dashboard");
+      }
     }
   }, [loading, user, router]);
 
   const fetchRequests = async () => {
-    const { data } = await api.get("/transactions", {
-      params: { page, search, status: "requested" },
-    });
-    setItems(data.items);
-    setPages(data.pages);
+    try {
+      if (user.role === "admin") {
+        const { data } = await api.get("/books/workspace-requests", {
+          params: { page, status: "pending" }
+        });
+        setItems(data.items);
+        setPages(data.pages);
+      } else {
+        const { data } = await api.get("/transactions", {
+          params: { page, search, status: "requested" },
+        });
+        setItems(data.items);
+        setPages(data.pages);
+      }
+    } catch (error) {
+      toast.error("Failed to load requests list");
+    }
+  };
+
+  const fetchInbox = async () => {
+    try {
+      const { data } = await api.get("/notifications/inbox", {
+        params: { page: inboxPage, limit: 10 },
+      });
+      setInboxItems(data.items);
+      setInboxPages(data.pages);
+    } catch (error) {
+      console.error("Failed to load inbox", error);
+    }
   };
 
   useEffect(() => {
     if (!user) return;
     fetchRequests();
   }, [user, page, search]);
+
+  useEffect(() => {
+    if (!user || user.role !== "librarian") return;
+    fetchInbox();
+  }, [user, inboxPage]);
 
   const openApproveModal = (transaction) => {
     setApproveTarget(transaction);
@@ -70,6 +108,16 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleApproveWorkspace = async (id) => {
+    try {
+      const { data } = await api.post(`/books/workspace-requests/${id}/approve`);
+      toast.success(data.message || "Request approved and book added to workspace!");
+      fetchRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Approve failed");
+    }
+  };
+
   const handleReject = async (id) => {
     if (!confirm("Reject this borrow request?")) return;
     try {
@@ -78,6 +126,26 @@ export default function NotificationsPage() {
       fetchRequests();
     } catch (error) {
       toast.error(error.response?.data?.message || "Reject failed");
+    }
+  };
+
+  const handleRejectWorkspace = async (id) => {
+    if (!confirm("Reject this workspace copy request?")) return;
+    try {
+      const { data } = await api.post(`/books/workspace-requests/${id}/reject`);
+      toast.success(data.message || "Request rejected");
+      fetchRequests();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Reject failed");
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await api.patch(`/notifications/inbox/${id}/read`);
+      setInboxItems((prev) => prev.map((n) => n._id === id ? { ...n, isRead: true } : n));
+    } catch (error) {
+      console.error("Mark read failed", error);
     }
   };
 
@@ -220,12 +288,21 @@ export default function NotificationsPage() {
                     by {item.bookId?.author}
                     {item.bookId?.isbn ? ` · ISBN ${item.bookId.isbn}` : ""}
                   </p>
-                  <p className={`text-xs mt-1 font-medium ${isDark ? "text-amber-400" : "text-amber-700"}`}>
-                    🎓 {item.userId?.name}
-                    <span className={`ml-1.5 font-normal ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                      {item.userId?.email}
-                    </span>
-                  </p>
+                  {user.role === "admin" ? (
+                    <p className={`text-xs mt-1 font-medium ${isDark ? "text-teal-400" : "text-teal-700"}`}>
+                      👤 Librarian: {item.librarianId?.name}
+                      <span className={`ml-1.5 font-normal ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                        {item.librarianId?.email}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className={`text-xs mt-1 font-medium ${isDark ? "text-amber-400" : "text-amber-700"}`}>
+                      🎓 Student: {item.userId?.name}
+                      <span className={`ml-1.5 font-normal ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                        {item.userId?.email}
+                      </span>
+                    </p>
+                  )}
                   <p className={`text-xs mt-0.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                     Requested {new Date(item.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
@@ -241,26 +318,53 @@ export default function NotificationsPage() {
                 }`}>
                   ⏳ Pending
                 </span>
-                <motion.button
-                  whileHover={{ scale: 1.05, boxShadow: "0 4px 20px rgba(16,185,129,0.3)" }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => openApproveModal(item)}
-                  className="rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all"
-                >
-                  ✅ Approve & Issue
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleReject(item._id)}
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
-                    isDark
-                      ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      : "border-red-200 text-red-600 hover:bg-red-50"
-                  }`}
-                >
-                  ✕ Reject
-                </motion.button>
+                {user.role === "admin" ? (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 4px 20px rgba(16,185,129,0.3)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleApproveWorkspace(item._id)}
+                      className="rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all"
+                    >
+                      ✅ Approve
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleRejectWorkspace(item._id)}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+                        isDark
+                          ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          : "border-red-200 text-red-600 hover:bg-red-50"
+                      }`}
+                    >
+                      ✕ Reject
+                    </motion.button>
+                  </>
+                ) : (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 4px 20px rgba(16,185,129,0.3)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => openApproveModal(item)}
+                      className="rounded-full bg-gradient-to-r from-teal-500 to-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all"
+                    >
+                      ✅ Approve & Issue
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleReject(item._id)}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors ${
+                        isDark
+                          ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
+                          : "border-red-200 text-red-600 hover:bg-red-50"
+                      }`}
+                    >
+                      ✕ Reject
+                    </motion.button>
+                  </>
+                )}
               </div>
               </div>
             </motion.div>
@@ -280,7 +384,7 @@ export default function NotificationsPage() {
               All caught up!
             </p>
             <p className={`text-xs mt-1 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-              No pending borrow requests at the moment.
+              {user?.role === "admin" ? "No pending workspace copy requests at the moment." : "No pending borrow requests at the moment."}
             </p>
           </motion.div>
         )}
@@ -289,6 +393,78 @@ export default function NotificationsPage() {
       <div className="mt-6">
         <Pagination page={page} pages={pages} onChange={setPage} />
       </div>
+
+      {/* ── Librarian Inbox (Book Assignments from Admin) ── */}
+      {user?.role === "librarian" && (
+        <div className="mt-10">
+          <div className="flex items-center gap-3 mb-5">
+            <div className={`h-8 w-1 rounded-full bg-gradient-to-b from-teal-400 to-emerald-500`} />
+            <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}>📬 Book Catalog Notifications</h3>
+            {inboxItems.filter(n => !n.isRead).length > 0 && (
+              <span className="rounded-full bg-teal-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                {inboxItems.filter(n => !n.isRead).length} new
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <AnimatePresence>
+              {inboxItems.map((notif, idx) => (
+                <motion.div
+                  key={notif._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: 30, scale: 0.95 }}
+                  transition={{ delay: idx * 0.04 }}
+                  className={`rounded-2xl border p-5 flex items-start gap-4 transition-all ${
+                    notif.isRead
+                      ? isDark ? "border-slate-700/40 bg-slate-800/30" : "border-slate-200 bg-white/60"
+                      : isDark ? "border-teal-500/30 bg-teal-500/5" : "border-teal-200 bg-teal-50"
+                  }`}
+                >
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
+                    notif.type === "WORKSPACE_REQUEST_APPROVED"
+                      ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                      : isDark ? "bg-teal-500/15 text-teal-400" : "bg-teal-50 text-teal-600"
+                  }`}>
+                    {notif.type === "WORKSPACE_REQUEST_APPROVED" ? "✅" : "📚"}
+                  </span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{notif.title}</p>
+                    <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{notif.message}</p>
+                    <p className={`text-xs mt-1 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                      {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  {!notif.isRead && (
+                    <button
+                      onClick={() => handleMarkRead(notif._id)}
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                        isDark
+                          ? "border-teal-500/30 text-teal-400 hover:bg-teal-500/10"
+                          : "border-teal-200 text-teal-600 hover:bg-teal-100"
+                      }`}
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {inboxItems.length === 0 && (
+              <div className={`rounded-2xl border p-10 text-center ${isDark ? "border-slate-700/50 bg-slate-800/40" : "border-slate-200 bg-white"}`}>
+                <p className="text-3xl mb-2">📭</p>
+                <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}>No catalog notifications yet.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <Pagination page={inboxPage} pages={inboxPages} onChange={setInboxPage} />
+          </div>
+        </div>
+      )}
 
       {/* ── Approve Modal ── */}
       <Modal

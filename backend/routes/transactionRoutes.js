@@ -12,6 +12,8 @@ const {
   listTransactions,
 } = require("../controllers/transactionController");
 
+const auditMiddleware = require("../middleware/auditMiddleware");
+
 const router = express.Router();
 
 // List all transactions
@@ -21,19 +23,21 @@ router.get("/", auth, listTransactions);
 router.post(
   "/request",
   auth,
+  auditMiddleware("TRANSACTION"),
   [body("bookId").notEmpty().withMessage("bookId is required")],
   validate,
   requestBorrow
 );
 
 // Librarian / Admin approves a pending borrow request
-router.post("/approve/:id", auth, role("admin", "librarian"), approveRequest);
+router.post("/approve/:id", auth, role("librarian"), auditMiddleware("TRANSACTION"), approveRequest);
 
 // Librarian / Admin issues a book directly
 router.post(
   "/issue",
   auth,
   role("admin", "librarian"),
+  auditMiddleware("TRANSACTION"),
   [
     body("userId").notEmpty().withMessage("userId is required"),
     body("bookId").notEmpty().withMessage("bookId is required"),
@@ -47,9 +51,9 @@ router.post(
 );
 
 // Librarian / Admin marks a book as returned
-router.post("/return/:id", auth, role("admin", "librarian"), returnBook);
+router.post("/return/:id", auth, role("admin", "librarian"), auditMiddleware("TRANSACTION"), returnBook);
 
 // Librarian / Admin rejects a pending borrow request
-router.delete("/:id", auth, role("admin", "librarian"), rejectRequest);
+router.delete("/:id", auth, role("librarian"), auditMiddleware("TRANSACTION"), rejectRequest);
 
 module.exports = router;

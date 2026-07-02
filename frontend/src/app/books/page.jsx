@@ -21,6 +21,7 @@ const emptyForm = {
   quantity: 1,
   description: "",
   cover: null,
+  workspaceId: "",
 };
 
 export default function BooksPage() {
@@ -40,6 +41,21 @@ export default function BooksPage() {
   const cardRefs = useRef([]);
   const [authorLookupLoading, setAuthorLookupLoading] = useState(false);
   const [isFetchingBook, setIsFetchingBook] = useState(false);
+  const [librarians, setLibrarians] = useState([]);
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      const fetchLibrarians = async () => {
+        try {
+          const { data } = await api.get("/users", { params: { limit: 1000 } });
+          setLibrarians((data.items || []).filter(u => u.role === "librarian"));
+        } catch (error) {
+          console.error("Failed to fetch librarians", error);
+        }
+      };
+      fetchLibrarians();
+    }
+  }, [user]);
 
   const canManage = user?.role === "admin" || user?.role === "librarian";
   const isLibrarian = user?.role === "librarian";
@@ -135,105 +151,7 @@ export default function BooksPage() {
     return isbn + checkDigit;
   };
 
-  // ✅ OpenLibrary API Fetch (Works in India)
-  const fetchBookDetails = async (title) => {
-    if (!title || title.length < 2) return;
 
-    setIsFetchingBook(true);
-    try {
-      const query = encodeURIComponent(title);
-      const response = await fetch(
-        `https://openlibrary.org/search.json?title=${query}&limit=3`
-      );
-      const data = await response.json();
-
-      if (data.docs && data.docs.length > 0) {
-        const bestMatch = data.docs[0];
-        const fetchedAuthor = bestMatch.author_name?.join(", ") || "";
-        const fetchedIsbn = bestMatch.isbn?.[0] || generateISBN();
-        const fetchedCategory = bestMatch.subject?.[0] || "";
-        let fetchedDescription = "";
-
-        // Fetch description if work key exists
-        if (bestMatch.key) {
-          try {
-            const workRes = await fetch(`https://openlibrary.org${bestMatch.key}.json`);
-            if (workRes.ok) {
-              const workData = await workRes.json();
-              const descObj = workData.description;
-              if (descObj) {
-                const rawDesc = typeof descObj === "string" ? descObj : descObj.value || "";
-                // Strip markdown links and HTML tags
-                fetchedDescription = rawDesc
-                  .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-                  .replace(/<[^>]*>/g, "");
-              }
-            }
-          } catch (descError) {
-            console.error("OpenLibrary Description Fetch Error:", descError);
-          }
-        }
-
-        // Fallback local description if not found
-        if (!fetchedDescription) {
-          const authorText = fetchedAuthor ? ` by ${fetchedAuthor}` : "";
-          const categoryText = fetchedCategory ? ` in the ${fetchedCategory} genre` : "";
-          fetchedDescription = `${title}${authorText}${categoryText} offers an engaging storyline and a memorable reading experience. Readers will find a balanced mix of character depth and plot momentum, making it a solid pick for both casual and dedicated readers.`;
-        }
-
-        setForm((prev) => ({
-          ...prev,
-          author: fetchedAuthor || prev.author,
-          isbn: fetchedIsbn,
-          category: fetchedCategory || prev.category,
-          description: fetchedDescription || prev.description,
-        }));
-
-        if (bestMatch.isbn?.[0] && fetchedCategory) {
-          toast.success("📚 Book details fetched successfully!");
-        } else if (bestMatch.isbn?.[0] && !fetchedCategory) {
-          toast.success("✅ ISBN found! Please select category manually.");
-        } else if (!bestMatch.isbn?.[0] && fetchedCategory) {
-          toast.success("✅ Category found! ISBN generated automatically.");
-        } else {
-          toast.success("📚 Basic details fetched. Please fill missing fields.");
-        }
-      } else {
-        const dummyIsbn = generateISBN();
-        setForm((prev) => ({
-          ...prev,
-          isbn: dummyIsbn,
-        }));
-        toast.warning("📚 Book not found on OpenLibrary. ISBN generated automatically.");
-      }
-    } catch (error) {
-      console.error("OpenLibrary API Error:", error);
-      const dummyIsbn = generateISBN();
-      setForm((prev) => ({
-        ...prev,
-        isbn: dummyIsbn,
-      }));
-      toast.error("⚠️ Could not fetch book details. ISBN generated automatically.");
-    } finally {
-      setIsFetchingBook(false);
-    }
-  };
-
-  // ✅ Title Change Handler (with debounce)
-  const handleTitleChange = (e) => {
-    const value = e.target.value;
-    setForm((prev) => ({ ...prev, title: value }));
-
-    if (window.titleTimeout) clearTimeout(window.titleTimeout);
-
-    if (value.length >= 2) {
-      window.titleTimeout = setTimeout(() => {
-        fetchBookDetails(value);
-      }, 600);
-    }
-  };
-
-  // ===================== END AUTO-FETCH =====================
 
   const openCreate = () => {
     setEditingId(null);
@@ -257,6 +175,7 @@ export default function BooksPage() {
       quantity: book.quantity,
       description: book.description || "",
       cover: null,
+      workspaceId: book.workspaceId || "",
     });
     setModalOpen(true);
   };
@@ -266,7 +185,9 @@ export default function BooksPage() {
     try {
       const payload = new FormData();
       Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== "") {
+        if (key === "workspaceId") {
+          payload.append(key, value || "");
+        } else if (value !== null && value !== "") {
           payload.append(key, value);
         }
       });
@@ -353,42 +274,52 @@ export default function BooksPage() {
     }
   };
 
-  const handleGenerateDescription = () => {
-    const title = form.title?.trim() || "This book";
-    const author = form.author?.trim();
-    const categoryLabel = form.category?.trim();
-    const authorText = author ? ` by ${author}` : "";
-    const categoryText = categoryLabel ? ` in the ${categoryLabel} genre` : "";
-    const generated = `${title}${authorText}${categoryText} offers an engaging storyline and a memorable reading experience. Readers will find a balanced mix of character depth and plot momentum, making it a solid pick for both casual and dedicated readers.`;
-    setForm((prev) => ({ ...prev, description: generated }));
-  };
-
-  const handleAutoGenerateAll = async () => {
+  const handleGenerateDescription = async () => {
     const title = form.title?.trim();
     if (!title) {
       toast.error("Please enter a title first");
       return;
     }
-    setAuthorLookupLoading(true);
+    setIsFetchingBook(true);
     try {
-      const { data } = await api.get("/books/lookup-author", { params: { title } });
-      const fetchedAuthor = data?.author || "";
-      const categoryLabel = form.category?.trim();
-      const categoryText = categoryLabel ? ` in the ${categoryLabel} genre` : "";
-
-      if (fetchedAuthor) {
-        const generated = `${title} by ${fetchedAuthor}${categoryText} offers an engaging storyline and a memorable reading experience. Readers will find a balanced mix of character depth and plot momentum, making it a solid pick for both casual and dedicated readers.`;
-        setForm((prev) => ({ ...prev, author: fetchedAuthor, description: generated }));
-        toast.success("Author & description auto-generated");
+      const { data } = await api.get("/books/auto-generate", { params: { title } });
+      if (data?.description) {
+        setForm((prev) => ({ ...prev, description: data.description }));
+        toast.success("Description auto-filled");
       } else {
-        const generated = `${title}${categoryText} offers an engaging storyline and a memorable reading experience. Readers will find a balanced mix of character depth and plot momentum, making it a solid pick for both casual and dedicated readers.`;
+        const authorText = form.author?.trim() ? ` by ${form.author.trim()}` : "";
+        const categoryText = form.category?.trim() ? ` in the ${form.category.trim()} genre` : "";
+        const generated = `${title}${authorText}${categoryText} offers an engaging storyline and a memorable reading experience. Readers will find a balanced mix of character depth and plot momentum, making it a solid pick for both casual and dedicated readers.`;
         setForm((prev) => ({ ...prev, description: generated }));
-        toast.error("Author not found, but description generated.");
+        toast.success("Local description generated");
       }
     } catch (error) {
-      toast.error("Unable to auto-generate right now");
+      toast.error("Unable to generate description right now");
     } finally {
-      setAuthorLookupLoading(false);
+      setIsFetchingBook(false);
+    }
+  };
+
+  const handleAutoGenerateAll = async () => {
+    const title = form.title?.trim();
+    if (!title) {
+      toast.error("Please enter a book title first");
+      return;
+    }
+    setIsFetchingBook(true);
+    try {
+      const { data } = await api.get("/books/auto-generate", { params: { title } });
+      setForm((prev) => ({
+        ...prev,
+        author: data.author || prev.author,
+        isbn: data.isbn || prev.isbn,
+        description: data.description || prev.description,
+      }));
+      toast.success("📚 Book details auto-generated!");
+    } catch (error) {
+      toast.error("Could not fetch details. Please fill in manually.");
+    } finally {
+      setIsFetchingBook(false);
     }
   };
 
@@ -624,7 +555,7 @@ export default function BooksPage() {
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
-                      <motion.div 
+                      <motion.div
                         className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400"
                         variants={{
                           hover: { scale: 1.15 }
@@ -814,27 +745,25 @@ export default function BooksPage() {
                           <input
                             required
                             value={form.title}
-                            onChange={handleTitleChange}
+                            onChange={(e) => setForm({ ...form, title: e.target.value })}
                             className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100/20 transition-all ${isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-800"
                               }`}
-                            placeholder="Enter book title (auto-fetches details)"
+                            placeholder="Enter book title"
                           />
                           <motion.button
                             type="button"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleAutoGenerateAll}
-                            disabled={authorLookupLoading || isFetchingBook}
-                            className={`shrink-0 rounded-full border px-3 py-2 text-[11px] font-semibold disabled:opacity-50 transition-all w-full sm:w-auto text-center ${isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                            disabled={isFetchingBook}
+                            className={`shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold disabled:opacity-50 transition-all w-full sm:w-auto text-center ${isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
                               }`}
                           >
-                            {authorLookupLoading || isFetchingBook
-                              ? "⏳ Generating..."
-                              : "🪄 Auto Generate"}
+                            {isFetchingBook ? "⏳ Generating..." : "✨ Auto Generate Details"}
                           </motion.button>
                         </div>
                         <p className={`text-[10px] mt-1 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-                          💡 Type title, wait 2 seconds — ISBN & Category auto-fill!
+                          💡 Enter the book title and click the button to generate Author, ISBN & Description automatically.
                         </p>
                       </motion.div>
 
@@ -973,11 +902,40 @@ export default function BooksPage() {
                             setForm({ ...form, cover: event.target.files[0] })
                           }
                           className={`w-full rounded-xl border px-3 py-1.5 text-sm file:mr-2 file:rounded-full file:border-0 file:px-3 file:py-1 file:text-xs file:font-semibold transition-all ${isDark
-                              ? "border-slate-700 text-slate-300 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
-                              : "border-slate-200 text-slate-800 file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                            ? "border-slate-700 text-slate-300 file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700"
+                            : "border-slate-200 text-slate-800 file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                             }`}
                         />
                       </motion.div>
+
+                      {/* ===== TARGET WORKSPACE (ADMIN ONLY) ===== */}
+                      {user?.role === "admin" && (
+                        <motion.div
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.25 }}
+                          className="md:col-span-2"
+                        >
+                          <label className={`block mb-1 text-xs font-semibold ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                            💼 ASSIGN TO LIBRARIAN WORKSPACE (OPTIONAL)
+                          </label>
+                          <select
+                            value={form.workspaceId}
+                            onChange={(event) =>
+                              setForm({ ...form, workspaceId: event.target.value })
+                            }
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-100/20 transition-all ${isDark ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-800"
+                              }`}
+                          >
+                            <option value="">📚 Master / Global Catalog</option>
+                            {librarians.map((lib) => (
+                              <option key={lib._id} value={lib._id}>
+                                👤 {lib.name} ({lib.email})
+                              </option>
+                            ))}
+                          </select>
+                        </motion.div>
+                      )}
 
                       {/* ===== DESCRIPTION ===== */}
                       <motion.div
@@ -995,10 +953,11 @@ export default function BooksPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleGenerateDescription}
+                            disabled={isFetchingBook}
                             className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-all ${isDark ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50"
                               }`}
                           >
-                            ✨ Generate
+                            {isFetchingBook ? "⏳" : "✨ Generate"}
                           </motion.button>
                         </div>
                         <textarea

@@ -44,23 +44,39 @@ export default function BookDetailsPage() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const [bookRes, wishlistRes, txRes] = await Promise.all([
-        api.get(`/books/${params.id}`),
-        api.get("/wishlist"),
-        api.get("/transactions", { params: { status: "requested", userId: user._id, limit: 100 } }),
-      ]);
-      setBook(bookRes.data.book);
-      const wl = wishlistRes.data.wishlist || [];
-      setWishlisted(wl.some((b) => (b._id || b) === params.id || (b._id || b).toString() === params.id));
-
-      // Check if this book already has an active request/issue
       try {
-        const issuedRes = await api.get("/transactions", { params: { status: "issued", limit: 100 } });
-        const allTx = [...(txRes.data.items || []), ...(issuedRes.data.items || [])];
-        const myTx = allTx.find((t) => t.bookId?._id === params.id && t.userId?._id === user._id);
-        if (myTx) setBorrowStatus(myTx.status);
-      } catch {
-        // ignore
+        // Use allSettled so a failed wishlist/transaction request doesn't crash the page
+        const [bookResult, wishlistResult, txResult] = await Promise.allSettled([
+          api.get(`/books/${params.id}`),
+          api.get("/wishlist"),
+          api.get("/transactions", { params: { status: "requested", userId: user._id, limit: 100 } }),
+        ]);
+
+        // Book is required — surface a real error if it fails
+        if (bookResult.status === "rejected") {
+          console.error("Failed to load book:", bookResult.reason?.response?.data?.message);
+          return;
+        }
+        setBook(bookResult.value.data.book);
+
+        // Wishlist is optional
+        if (wishlistResult.status === "fulfilled") {
+          const wl = wishlistResult.value.data.wishlist || [];
+          setWishlisted(wl.some((b) => (b._id || b) === params.id || (b._id || b).toString() === params.id));
+        }
+
+        // Check if this book already has an active request/issue
+        try {
+          const issuedRes = await api.get("/transactions", { params: { status: "issued", limit: 100 } });
+          const requestedItems = txResult.status === "fulfilled" ? (txResult.value.data.items || []) : [];
+          const allTx = [...requestedItems, ...(issuedRes.data.items || [])];
+          const myTx = allTx.find((t) => t.bookId?._id === params.id && t.userId?._id === user._id);
+          if (myTx) setBorrowStatus(myTx.status);
+        } catch {
+          // ignore — borrow status is non-critical
+        }
+      } catch (err) {
+        console.error("Unexpected error loading book details:", err);
       }
     };
     load();

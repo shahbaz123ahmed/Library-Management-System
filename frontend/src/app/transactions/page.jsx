@@ -204,14 +204,16 @@ export default function TransactionsPage() {
             >
               📄 Export CSV
             </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: "0 8px 30px rgba(13,148,136,0.4)" }}
-              whileTap={{ scale: 0.95 }}
-              onClick={openIssue}
-              className="rounded-full bg-gradient-to-r from-teal-500 to-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-600/25 transition-all"
-            >
-              📖 Issue Book
-            </motion.button>
+            {user?.role !== "admin" && (
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: "0 8px 30px rgba(13,148,136,0.4)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={openIssue}
+                className="rounded-full bg-gradient-to-r from-teal-500 to-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-teal-600/25 transition-all"
+              >
+                📖 Issue Book
+              </motion.button>
+            )}
           </motion.div>
         </div>
       </motion.div>

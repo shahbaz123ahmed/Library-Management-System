@@ -25,8 +25,9 @@ const cleanDatabase = async () => {
       console.log(`✅ Normalized categories for ${categoryUpdates} books.`);
     }
 
-    // 2. Duplicate ISBN Merger
+    // 2. Duplicate ISBN Merger — only for global/admin books; workspace copies intentionally share ISBNs
     const duplicates = await Book.aggregate([
+      { $match: { isGlobal: true } },  // only consider global books for duplicate detection
       { $group: { _id: "$isbn", count: { $sum: 1 }, ids: { $push: "$_id" } } },
       { $match: { count: { $gt: 1 } } }
     ]);
@@ -36,7 +37,8 @@ const cleanDatabase = async () => {
       const isbn = dup._id;
       if (!isbn || isbn.trim().toUpperCase() === "N/A" || isbn.trim() === "") continue;
 
-      const dupBooks = await Book.find({ isbn });
+      // Only look at global books — never touch workspace copies
+      const dupBooks = await Book.find({ isbn, isGlobal: true });
       if (dupBooks.length <= 1) continue;
 
       // Primary book is the one with highest quantity
@@ -62,8 +64,8 @@ const cleanDatabase = async () => {
           { arrayFilters: [{ "elem": otherBook._id }] }
         );
 
-        // Delete duplicate
-        await Book.deleteOne({ _id: otherBook._id });
+        // Delete duplicate global book only
+        await Book.deleteOne({ _id: otherBook._id, isGlobal: true });
         mergedCount++;
       }
 
@@ -71,7 +73,7 @@ const cleanDatabase = async () => {
     }
 
     if (mergedCount > 0) {
-      console.log(`✅ Merged ${mergedCount} duplicate book entries by ISBN.`);
+      console.log(`✅ Merged ${mergedCount} duplicate global book entries by ISBN.`);
     }
 
     // 3. Sync borrowCount from Transaction history

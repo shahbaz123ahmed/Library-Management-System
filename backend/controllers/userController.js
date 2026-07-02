@@ -29,6 +29,13 @@ const createUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hash, role });
 
+    res.locals.audit = {
+      action: "User Created",
+      targetUser: user._id,
+      targetUserName: user.name,
+      metadata: { role: user.role }
+    };
+
     res.status(201).json({
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
@@ -44,6 +51,10 @@ const updateUser = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    const oldRole = user.role;
+    const oldName = user.name;
+    const oldEmail = user.email;
 
     if (email && email !== user.email) {
       const existing = await User.findOne({ email });
@@ -61,6 +72,23 @@ const updateUser = async (req, res, next) => {
     }
 
     await user.save();
+
+    const roleUpdated = oldRole !== user.role;
+    res.locals.audit = {
+      action: roleUpdated ? "Role Updated" : "User Updated",
+      targetUser: user._id,
+      targetUserName: user.name,
+      metadata: {
+        roleChanged: roleUpdated,
+        oldRole,
+        newRole: user.role,
+        oldName,
+        newName: user.name,
+        oldEmail,
+        newEmail: user.email
+      }
+    };
+
     res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {
     next(error);
@@ -73,6 +101,13 @@ const deleteUser = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    res.locals.audit = {
+      action: "User Deleted",
+      targetUser: user._id,
+      targetUserName: user.name,
+      metadata: { role: user.role }
+    };
+
     await user.deleteOne();
     res.json({ message: "User deleted" });
   } catch (error) {

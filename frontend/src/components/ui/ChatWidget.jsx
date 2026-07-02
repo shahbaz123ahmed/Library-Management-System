@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { processChatMessage } from "@/services/chatbotService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const IMAGE_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace("/api", "");
@@ -81,15 +82,22 @@ function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
       className="group rounded-xl border border-slate-200 bg-white p-3 text-left transition-all duration-250 hover:shadow-lg hover:border-teal-300 book-card-hover relative overflow-hidden"
     >
       {/* Badges container */}
-      <div className="absolute top-2 right-2 flex gap-1 z-10">
-        {isPopular && (
-          <span className="rounded-full bg-amber-500/90 backdrop-blur-xs px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider shadow-xs">
-            Popular
-          </span>
-        )}
-        {isNew && (
-          <span className="rounded-full bg-teal-500/90 backdrop-blur-xs px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider shadow-xs">
-            New
+      <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+        <div className="flex gap-1">
+          {isPopular && (
+            <span className="rounded-full bg-amber-500/90 backdrop-blur-xs px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider shadow-xs">
+              Popular
+            </span>
+          )}
+          {isNew && (
+            <span className="rounded-full bg-teal-500/90 backdrop-blur-xs px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider shadow-xs">
+              New
+            </span>
+          )}
+        </div>
+        {book.recBadge && (
+          <span className="rounded-full bg-indigo-600/95 backdrop-blur-xs px-2.5 py-0.5 text-[8px] font-bold text-white uppercase tracking-wider shadow-sm border border-indigo-400/30">
+            ✨ {book.recBadge}
           </span>
         )}
       </div>
@@ -834,8 +842,57 @@ export default function ChatWidget() {
     addMessage({ id: `user-${Date.now()}`, role: "user", text: trimmed });
     setChatInput("");
 
+    // Prepare context state payload for the service
+    const contextPayload = {
+      lastQuery: sessionMemory.lastQuery,
+      lastCategory: sessionMemory.lastCategory,
+      lastAuthor: sessionMemory.lastInteractedBook?.author || "",
+      lastResults: sessionMemory.lastResults || [],
+      page: sessionMemory.page || 1
+    };
+
+    // Process using Chatbot Service
+    const processed = await processChatMessage({
+      message: trimmed,
+      context: contextPayload,
+      chatLanguage,
+      categories,
+      user
+    });
+
+    if (processed.success) {
+      addMessage({
+        id: `bot-${Date.now()}`,
+        role: "bot",
+        text: processed.text,
+        results: processed.results || [],
+        suggestions: QUICK_ACTIONS
+      });
+
+      if (processed.updatedContext) {
+        setSessionMemory((prev) => ({
+          ...prev,
+          lastResults: processed.updatedContext.lastResults || prev.lastResults,
+          page: processed.updatedContext.page || prev.page
+        }));
+      }
+      return;
+    }
+
+    // Auto-corrected query feedback if typo correction occurs
+    const targetQuery = processed.didCorrect ? processed.correctedQuery : trimmed;
+    if (processed.didCorrect) {
+      addMessage({
+        id: `bot-correct-${Date.now()}`,
+        role: "bot",
+        text: chatLanguage === "hi"
+          ? `🔍 Humne aapka query correct kiya: **"${targetQuery}"**`
+          : `🔍 Auto-corrected query to: **"${targetQuery}"**`
+      });
+    }
+
     // NLP intent routing
-    const cleanedInput = trimmed.toLowerCase();
+    const cleanedInput = targetQuery.toLowerCase();
 
     // 1. Show More pagination Command
     if (cleanedInput === "show more" || cleanedInput === "more") {
@@ -913,12 +970,12 @@ export default function ChatWidget() {
     setSearchMode(null); // reset
 
     // Auto-detect ISBN if user typed only digits (and no active mode)
-    if (!mode && looksLikeISBN(trimmed)) {
-      await fetchAndDisplay({ mode: "isbn", query: trimmed });
+    if (!mode && looksLikeISBN(targetQuery)) {
+      await fetchAndDisplay({ mode: "isbn", query: targetQuery });
       return;
     }
 
-    await fetchAndDisplay({ mode: mode || "title", query: trimmed });
+    await fetchAndDisplay({ mode: mode || "title", query: targetQuery });
   };
 
   // ── Borrow ───────────────────────────────────────────────────────────────────

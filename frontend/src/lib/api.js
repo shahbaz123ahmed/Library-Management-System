@@ -40,22 +40,15 @@ api.interceptors.response.use(
 
     const message = error.response?.data?.message || "";
     
-    // Only logout on token expiration, not on permission errors
-    if (status === 403) {
-      // Check if it's a permission error (not token expiration)
-      const isPermissionError = 
-        message.includes("Cannot delete") ||
-        message.includes("don't have permission") ||
-        message.includes("not authorized") ||
-        message.includes("only delete books you added");
-      
-      if (isPermissionError) {
-        // Just re-throw the error - let the component show the message
-        return Promise.reject(error);
-      }
-      
-      // Token expired or invalid - logout and redirect
-      if (typeof window !== "undefined") {
+    // Only logout on genuine token expiration (401), not on permission/access errors (403)
+    if (status === 401) {
+      const isTokenError =
+        message.includes("No token") ||
+        message.includes("Unauthorized") ||
+        message.includes("expired") ||
+        message.includes("invalid token");
+
+      if (isTokenError && typeof window !== "undefined") {
         localStorage.removeItem("lms_token");
         localStorage.removeItem("user");
         if (!window.location.pathname.includes("/login")) {
@@ -63,7 +56,8 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
+    // For 403 errors — NEVER log out, always just re-throw so the component can handle it
     return Promise.reject(error);
   }
 );

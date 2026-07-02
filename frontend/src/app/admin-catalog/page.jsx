@@ -85,11 +85,11 @@ export default function AdminCatalogPage() {
     if (!isLibrarian) return;
 
     try {
-      const response = await api.post(`/books/${book._id}/copy-to-workspace`);
-      toast.success(`"${book.title}" copied to your workspace!`);
+      const response = await api.post(`/books/${book._id}/request-workspace`);
+      toast.success(response.data.message || `Request to copy "${book.title}" submitted to Admin!`);
       fetchBooks();
     } catch (error) {
-      const message = error.response?.data?.message || "Failed to copy book";
+      const message = error.response?.data?.message || "Failed to submit request";
       toast.error(message);
     }
   };
@@ -347,6 +347,25 @@ export default function AdminCatalogPage() {
                       >
                         ✓ Added to Workspace
                       </motion.button>
+                    ) : book.workspaceRequestStatus === "pending" ? (
+                      <motion.button
+                        disabled
+                        className="w-full rounded-full border border-amber-200 bg-amber-50 py-2.5 text-xs font-bold text-amber-700 transition flex items-center justify-center gap-1.5 opacity-75 cursor-not-allowed"
+                      >
+                        ⌛ Request Pending
+                      </motion.button>
+                    ) : book.workspaceRequestStatus === "rejected" ? (
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[10px] text-center text-red-500 font-semibold">Request Rejected by Admin</span>
+                        <motion.button
+                          whileHover={{ scale: 1.05, backgroundColor: "#0f766e" }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleCopyToWorkspace(book)}
+                          className="w-full rounded-full bg-teal-600 py-2.5 text-xs font-bold text-white transition flex items-center justify-center gap-1.5"
+                        >
+                          📋 Try Request Again
+                        </motion.button>
+                      </div>
                     ) : (
                       <motion.button
                         whileHover={{ scale: 1.05, backgroundColor: "#0f766e" }}

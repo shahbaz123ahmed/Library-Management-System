@@ -70,13 +70,13 @@ const getStats = async (req, res, next) => {
   }
 };
 
+const { getExtendedAnalytics } = require("../services/analyticsService");
+
 const getAnalytics = async (req, res, next) => {
   try {
     const user = req.user;
-    console.log("📈 Getting analytics for:", user.email, "| Role:", user.role);
     
-    // For admin and librarian - show most issued books across the library
-    // For student - show recommended or popular books
+    // Maintain backward compatibility for existing charts
     const mostIssued = await Transaction.aggregate([
       { $group: { _id: "$bookId", total: { $sum: 1 } } },
       { $sort: { total: -1 } },
@@ -93,7 +93,12 @@ const getAnalytics = async (req, res, next) => {
       { $project: { _id: 0, total: 1, title: { $ifNull: ["$book.title", "Unknown Book"] } } },
     ]);
 
-    res.json({ mostIssued: mostIssued || [] });
+    const extended = await getExtendedAnalytics();
+
+    res.json({
+      mostIssued: mostIssued || [],
+      ...extended
+    });
   } catch (error) {
     console.error("Analytics error:", error);
     next(error);

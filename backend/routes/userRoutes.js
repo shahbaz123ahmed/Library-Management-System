@@ -5,6 +5,8 @@ const role = require("../middleware/role");
 const validate = require("../middleware/validate");
 const { listUsers, createUser, updateUser, deleteUser } = require("../controllers/userController");
 
+const auditMiddleware = require("../middleware/auditMiddleware");
+
 const router = express.Router();
 
 router.get("/", auth, role("admin", "librarian"), listUsers);
@@ -13,6 +15,7 @@ router.post(
   "/",
   auth,
   role("admin"),
+  auditMiddleware("USER"),
   [
     body("name").notEmpty().withMessage("Name is required"),
     body("email").isEmail().withMessage("Valid email is required"),
@@ -27,6 +30,7 @@ router.put(
   "/:id",
   auth,
   role("admin"),
+  auditMiddleware("USER"),
   [
     body("email").optional().isEmail().withMessage("Valid email is required"),
     body("password").optional({ values: "falsy" }).isLength({ min: 6 }).withMessage("Password min 6 chars"),
@@ -36,6 +40,6 @@ router.put(
   updateUser
 );
 
-router.delete("/:id", auth, role("admin"), deleteUser);
+router.delete("/:id", auth, role("admin"), auditMiddleware("USER"), deleteUser);
 
 module.exports = router;

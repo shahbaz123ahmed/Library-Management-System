@@ -7,6 +7,8 @@ const signToken = (user) =>
     expiresIn: process.env.JWT_EXPIRES || "7d",
   });
 
+const { logActivity } = require("../services/loggerService");
+
 const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -19,6 +21,16 @@ const register = async (req, res, next) => {
     const user = await User.create({ name, email, password: hash, role: "student" });
 
     const token = signToken(user);
+
+    await logActivity({
+      req,
+      activityType: "AUTH",
+      action: "Student Registration",
+      status: "success",
+      performedBy: user._id,
+      userRole: user.role
+    });
+
     res.status(201).json({
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
@@ -33,15 +45,41 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
+      await logActivity({
+        req,
+        activityType: "AUTH",
+        action: "Login Failed",
+        status: "failed",
+        metadata: { email, reason: "User not found" }
+      });
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
+      await logActivity({
+        req,
+        activityType: "AUTH",
+        action: "Login Failed",
+        status: "failed",
+        performedBy: user._id,
+        userRole: user.role,
+        metadata: { email, reason: "Password mismatch" }
+      });
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     const token = signToken(user);
+
+    await logActivity({
+      req,
+      activityType: "AUTH",
+      action: "Login",
+      status: "success",
+      performedBy: user._id,
+      userRole: user.role
+    });
+
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
