@@ -61,12 +61,6 @@ cd backend
 npm run seed
 ```
 
-Demo users (password: Password123!):
-
-- Admin: admin@library.com
-- Librarian: librarian@library.com
-- Student: student@library.com
-
 ### 4) Run the apps
 
 ```bash
