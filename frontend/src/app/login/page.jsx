@@ -56,205 +56,173 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthShell isDark={isDark} setIsDark={setIsDark}>
+    <AuthShell activeTab="login" isDark={isDark} setIsDark={setIsDark}>
       {(t) => (
         <>
-          {/* Your existing JSX stays the same */}
+          {/* Circular Logo Badge */}
+          <div className="flex justify-center mb-6">
+            <div className="w-14 h-14 rounded-full bg-[#f4e8dc]/60 border border-[#e8d8c8] flex items-center justify-center text-xl shadow-inner">
+              🏛️
+            </div>
+          </div>
+
+          {/* Heading */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
-            style={{ marginBottom: "24px" }}
+            className="text-center mb-6"
           >
-            <motion.h2
-              animate={{ color: t.text }}
-              transition={{ duration: 0.4 }}
-              style={{
-                fontFamily: "'Cinzel',serif",
-                fontSize: "16px", fontWeight: 600,
-                letterSpacing: "0.1em", marginBottom: "4px",
-              }}
-            >
+            <h2 className="font-serif text-2xl font-bold text-stone-850 tracking-tight">
               Welcome Back
-            </motion.h2>
-            <motion.p
-              animate={{ color: t.subtext }}
-              transition={{ duration: 0.4 }}
-              style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: "14px", fontStyle: "italic" }}
-            >
-              Sign in to manage your library.
-            </motion.p>
+            </h2>
+            <p className="text-xs text-stone-500 mt-1 font-medium">
+              Sign in to manage your library
+            </p>
           </motion.div>
 
           <form onSubmit={onSubmit}>
             <AuthInput
-              label="Email Address" type="email" icon="✉️"
-              value={form.email} delay={0.05} t={t}
+              label="Email Address"
+              type="email"
+              icon="✉️"
+              value={form.email}
+              delay={0.05}
+              t={t}
               required
               autoComplete="username"
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="librarian@library.com"
             />
+            
             <AuthInput
-              label="Password" type="password" icon="🔐"
-              value={form.password} delay={0.1} t={t}
+              label="Password"
+              type="password"
+              icon="🔐"
+              value={form.password}
+              delay={0.1}
+              t={t}
               required
               autoComplete="current-password"
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="••••••••••••"
+              rightLabel={
+                <Link href="/forgot-password" className="text-xs font-semibold text-[#8b5e3c] hover:underline font-sans">
+                  Forgot Password?
+                </Link>
+              }
             />
 
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-              style={{ textAlign: "right", marginBottom: "20px", marginTop: "-8px" }}
-            >
-              <Link href="/forgot-password" style={{ textDecoration: "none" }}>
-                <motion.span
-                  whileHover={{ color: t.accent }}
-                  style={{
-                    fontSize: "12px", color: t.subtext,
-                    cursor: "pointer", fontStyle: "italic",
-                    transition: "color 0.2s",
-                    fontFamily: "'Cormorant Garamond',serif",
-                  }}
-                >
-                  Forgot your password?
-                </motion.span>
-              </Link>
-            </motion.div>
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center gap-2 mb-6 mt-1">
+              <input 
+                type="checkbox" 
+                id="remember" 
+                className="rounded text-[#8b5e3c] focus:ring-[#8b5e3c]/20 w-4 h-4 border-stone-300 accent-[#8b5e3c]" 
+              />
+              <label htmlFor="remember" className="text-xs font-semibold text-stone-600 font-sans cursor-pointer selection:bg-transparent">
+                Remember me
+              </label>
+            </div>
 
+            {/* Submit Button */}
             <motion.button
               type="submit"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              whileHover={{ scale: 1.02, boxShadow: `0 8px 32px ${t.accentDim}` }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.01, boxShadow: `0 8px 24px ${t.accentDim}` }}
+              whileTap={{ scale: 0.99 }}
               disabled={loading}
               style={{
-                width: "100%", padding: "14px", border: "none",
-                borderRadius: "12px",
                 background: t.btnGrad,
                 color: t.btnText,
-                fontFamily: "'Cinzel',serif",
-                fontSize: "13px", fontWeight: 700,
-                letterSpacing: "0.2em",
-                cursor: loading ? "not-allowed" : "pointer",
-                position: "relative", overflow: "hidden",
-                boxShadow: `0 4px 20px ${t.accentDim}`,
-                opacity: loading ? 0.85 : 1,
-                transition: "opacity 0.3s",
               }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-sans text-sm font-semibold shadow-md transition-all duration-300 disabled:opacity-85"
             >
               <AnimatePresence mode="wait">
                 {loading ? (
-                  <motion.div key="loading"
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center gap-1.5"
                   >
                     {[0, 1, 2].map((i) => (
-                      <motion.div key={i}
+                      <motion.div
+                        key={i}
                         animate={{ y: [0, -6, 0] }}
                         transition={{ duration: 0.5, delay: i * 0.1, repeat: Infinity }}
-                        style={{ width: 6, height: 6, borderRadius: "50%", background: t.btnText }}
+                        className="w-1.5 h-1.5 rounded-full bg-white"
                       />
                     ))}
                   </motion.div>
                 ) : (
-                  <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    OPEN THE ARCHIVES
+                  <motion.span
+                    key="label"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2"
+                  >
+                    Sign In <span>➔</span>
                   </motion.span>
                 )}
               </AnimatePresence>
-
-              {!loading && (
-                <motion.div
-                  animate={{ x: ["-100%", "200%"] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 1.5 }}
-                  style={{
-                    position: "absolute", top: 0, left: 0,
-                    width: "40%", height: "100%",
-                    background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)",
-                    transform: "skewX(-20deg)",
-                  }}
-                />
-              )}
             </motion.button>
           </form>
 
+          {/* Divider */}
           <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-            style={{ display: "flex", alignItems: "center", gap: "12px", margin: "20px 0" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="flex items-center gap-3 my-5"
           >
-            <div style={{ flex: 1, height: "1px", background: t.divider }} />
-            <span style={{ fontSize: "11px", color: t.subtext, fontStyle: "italic" }}>or</span>
-            <div style={{ flex: 1, height: "1px", background: t.divider }} />
+            <div className="flex-1 h-[1px] bg-stone-200" />
+            <span className="text-[11px] font-semibold text-stone-400 font-sans uppercase tracking-wider">or continue with</span>
+            <div className="flex-1 h-[1px] bg-stone-200" />
           </motion.div>
 
+          {/* Social Sign-in */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-            style={{ display: "flex", gap: "12px" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="flex gap-3"
           >
             <motion.button
               type="button"
-              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              style={{
-                flex: 1, padding: "11px",
-                background: t.socialBg,
-                border: `1.5px solid ${t.accentDim}`,
-                borderRadius: "10px",
-                fontFamily: "'Cormorant Garamond',serif",
-                fontSize: "13px", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                backdropFilter: "blur(8px)",
-              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 py-2.5 px-4 bg-white border border-stone-200 hover:border-stone-300 rounded-xl font-sans text-xs font-semibold text-stone-700 flex items-center justify-center gap-2 shadow-sm transition-all"
               onClick={() => window.location.href = "https://www.google.com/"}
             >
               <span>🌐</span>
-              <span style={{ color: t.subtext }}>Google</span>
+              <span>Google</span>
             </motion.button>
             <motion.button
               type="button"
-              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              style={{
-                flex: 1, padding: "11px",
-                background: t.socialBg,
-                border: `1.5px solid ${t.accentDim}`,
-                borderRadius: "10px",
-                fontFamily: "'Cormorant Garamond',serif",
-                fontSize: "13px", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                backdropFilter: "blur(8px)",
-              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex-1 py-2.5 px-4 bg-white border border-stone-200 hover:border-stone-300 rounded-xl font-sans text-xs font-semibold text-stone-700 flex items-center justify-center gap-2 shadow-sm transition-all"
               onClick={() => window.location.href = "https://github.com/topics/login"}
             >
               <span>🐱</span>
-              <span style={{ color: t.subtext }}>GitHub</span>
+              <span>GitHub</span>
             </motion.button>
           </motion.div>
 
+          {/* Footer Link */}
           <motion.p
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            style={{
-              textAlign: "center", marginTop: "20px",
-              fontSize: "13px", color: t.subtext,
-              fontStyle: "italic",
-              fontFamily: "'Cormorant Garamond',serif",
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-center mt-6 text-xs text-stone-500 font-sans font-medium"
           >
             New here?{" "}
-            <Link href="/register" style={{ textDecoration: "none" }}>
-              <motion.span
-                whileHover={{ color: t.accent }}
-                style={{
-                  color: `${t.accent}CC`,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  textUnderlineOffset: "3px",
-                  transition: "color 0.2s",
-                  fontWeight: 600,
-                }}
-              >
-                Join the Library
-              </motion.span>
+            <Link href="/register" className="text-[#8b5e3c] font-bold hover:underline">
+              Create an account
             </Link>
           </motion.p>
         </>
