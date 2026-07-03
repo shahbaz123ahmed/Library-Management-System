@@ -257,52 +257,56 @@ export default function UsersPage() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: index * 0.04, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{ y: -2, boxShadow: isDark ? "0 8px 30px rgba(0,0,0,0.3)" : "0 8px 30px rgba(15,23,42,0.1)" }}
-                className={`flex flex-col gap-4 rounded-2xl border p-5 transition-colors duration-300 md:flex-row md:items-center md:justify-between ${
-                  isDark
-                    ? "bg-slate-800/60 border-slate-700/50 backdrop-blur-sm"
-                    : "bg-white border-slate-200/80 shadow-sm"
-                }`}
+                className="rounded-2xl bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 p-[1.5px] transition-all duration-300"
               >
-                {/* Left: avatar + info */}
-                <div className="flex items-center gap-4">
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold ${cfg.avatar(isDark)}`}>
-                    {item.name?.charAt(0)?.toUpperCase() || cfg.icon}
+                <div
+                  className={`flex flex-col gap-4 rounded-[15px] p-5 transition-colors duration-300 md:flex-row md:items-center md:justify-between ${
+                    isDark
+                      ? "bg-slate-900/95 backdrop-blur-sm"
+                      : "bg-white"
+                  }`}
+                >
+                  {/* Left: avatar + info */}
+                  <div className="flex items-center gap-4">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-bold ${cfg.avatar(isDark)}`}>
+                      {item.name?.charAt(0)?.toUpperCase() || cfg.icon}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold transition-colors duration-300 ${isDark ? "text-white" : "text-slate-900"}`}>
+                        {item.name}
+                      </p>
+                      <p className={`text-xs mt-0.5 transition-colors duration-300 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                        {item.email}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={`text-sm font-semibold transition-colors duration-300 ${isDark ? "text-white" : "text-slate-900"}`}>
-                      {item.name}
-                    </p>
-                    <p className={`text-xs mt-0.5 transition-colors duration-300 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                      {item.email}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Right: role badge + actions */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${cfg.badge(isDark)}`}>
-                    {cfg.icon} {item.role}
-                  </span>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => openEdit(item)}
-                    className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors duration-200 ${
-                      isDark
-                        ? "border-slate-600 text-slate-300 hover:border-teal-500 hover:text-teal-400"
-                        : "border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600"
-                    }`}
-                  >
-                    ✏️ Edit
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.05, boxShadow: "0 4px 20px rgba(239,68,68,0.3)" }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDelete(item._id)}
-                    className="rounded-full bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all"
-                  >
-                    🗑️ Delete
-                  </motion.button>
+                  {/* Right: role badge + actions */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${cfg.badge(isDark)}`}>
+                      {cfg.icon} {item.role}
+                    </span>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => openEdit(item)}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition-colors duration-200 ${
+                        isDark
+                          ? "border-slate-600 text-slate-300 hover:border-teal-500 hover:text-teal-400"
+                          : "border-slate-200 text-slate-600 hover:border-teal-500 hover:text-teal-600"
+                      }`}
+                    >
+                      ✏️ Edit
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05, boxShadow: "0 4px 20px rgba(239,68,68,0.3)" }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleDelete(item._id)}
+                      className="rounded-full bg-gradient-to-r from-red-500 to-red-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all"
+                    >
+                      🗑️ Delete
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
             );

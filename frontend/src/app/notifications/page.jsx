@@ -416,38 +416,43 @@ export default function NotificationsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: 30, scale: 0.95 }}
                   transition={{ delay: idx * 0.04 }}
-                  className={`rounded-2xl border p-5 flex items-start gap-4 transition-all ${
-                    notif.isRead
-                      ? isDark ? "border-slate-700/40 bg-slate-800/30" : "border-slate-200 bg-white/60"
-                      : isDark ? "border-teal-500/30 bg-teal-500/5" : "border-teal-200 bg-teal-50"
-                  }`}
+                  whileHover={{ y: -2, boxShadow: isDark ? "0 8px 30px rgba(0,0,0,0.3)" : "0 8px 30px rgba(15,23,42,0.1)" }}
+                  className="rounded-2xl bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 p-[1.5px] transition-all duration-300"
                 >
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
-                    notif.type === "WORKSPACE_REQUEST_APPROVED"
-                      ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
-                      : isDark ? "bg-teal-500/15 text-teal-400" : "bg-teal-50 text-teal-600"
-                  }`}>
-                    {notif.type === "WORKSPACE_REQUEST_APPROVED" ? "✅" : "📚"}
-                  </span>
-                  <div className="flex-1">
-                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{notif.title}</p>
-                    <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{notif.message}</p>
-                    <p className={`text-xs mt-1 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
-                      {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </p>
+                  <div
+                    className={`rounded-[15px] p-5 flex items-start gap-4 transition-colors duration-300 ${
+                      notif.isRead
+                        ? isDark ? "bg-slate-900/95 backdrop-blur-sm" : "bg-white"
+                        : isDark ? "bg-slate-900/80 backdrop-blur-sm shadow-[inset_0_0_12px_rgba(20,184,166,0.15)]" : "bg-teal-50/50"
+                    }`}
+                  >
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
+                      notif.type === "WORKSPACE_REQUEST_APPROVED"
+                        ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                        : isDark ? "bg-teal-500/15 text-teal-400" : "bg-teal-50 text-teal-600"
+                    }`}>
+                      {notif.type === "WORKSPACE_REQUEST_APPROVED" ? "✅" : "📚"}
+                    </span>
+                    <div className="flex-1">
+                      <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{notif.title}</p>
+                      <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{notif.message}</p>
+                      <p className={`text-xs mt-1 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                        {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    {!notif.isRead && (
+                      <button
+                        onClick={() => handleMarkRead(notif._id)}
+                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                          isDark
+                            ? "border-teal-500/30 text-teal-400 hover:bg-teal-500/10"
+                            : "border-teal-200 text-teal-600 hover:bg-teal-100"
+                        }`}
+                      >
+                        Mark read
+                      </button>
+                    )}
                   </div>
-                  {!notif.isRead && (
-                    <button
-                      onClick={() => handleMarkRead(notif._id)}
-                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                        isDark
-                          ? "border-teal-500/30 text-teal-400 hover:bg-teal-500/10"
-                          : "border-teal-200 text-teal-600 hover:bg-teal-100"
-                      }`}
-                    >
-                      Mark read
-                    </button>
-                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
