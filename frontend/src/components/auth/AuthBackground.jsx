@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, createContext, useContext } from "react";
+import { useEffect, useState, createContext, useContext, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 
@@ -11,6 +11,46 @@ export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) 
   const [particles, setParticles] = useState([]);
   const [mounted, setMounted] = useState(false);
   const [lampOn, setLampOn] = useState(false);
+  const rightPanelRef = useRef(null);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      const smoothScrollTo = (endY, duration) => {
+        const startY = window.scrollY;
+        const distance = endY - startY;
+        const startTime = performance.now();
+
+        const easeInOutCubic = (t, b, c, d) => {
+          t /= d / 2;
+          if (t < 1) return (c / 2) * t * t * t + b;
+          t -= 2;
+          return (c / 2) * (t * t * t + 2) + b;
+        };
+
+        const animation = (currentTime) => {
+          const timeElapsed = currentTime - startTime;
+          const nextY = easeInOutCubic(timeElapsed, startY, distance, duration);
+          window.scrollTo(0, nextY);
+          if (timeElapsed < duration) {
+            requestAnimationFrame(animation);
+          } else {
+            window.scrollTo(0, endY);
+          }
+        };
+        requestAnimationFrame(animation);
+      };
+
+      if (lampOn && rightPanelRef.current) {
+        setTimeout(() => {
+          const rect = rightPanelRef.current.getBoundingClientRect();
+          const targetY = window.scrollY + rect.top - 20; // 20px padding
+          smoothScrollTo(targetY, 1500); // 1500ms (1.5 seconds) ultra-slow, smooth glide
+        }, 300); // Wait for the fade-in animation to render
+      } else if (!lampOn) {
+        smoothScrollTo(0, 1500);
+      }
+    }
+  }, [lampOn]);
 
   const dragY = useMotionValue(0);
   const chainY2 = useTransform(dragY, (y) => 175 + y);
@@ -278,6 +318,7 @@ export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) 
           <AnimatePresence>
             {lampOn && (
               <motion.div
+                ref={rightPanelRef}
                 key="auth-panel"
                 initial={{ opacity: 0, x: 80, scale: 0.97 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}

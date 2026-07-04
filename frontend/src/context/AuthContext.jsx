@@ -39,6 +39,11 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  const oauthLogin = (token, userData) => {
+    setAuthToken(token);
+    setUser(userData);
+  };
+
   const register = async (payload) => {
     const { data } = await api.post("/auth/register", payload);
     setAuthToken(data.token);
@@ -53,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
+    () => ({ user, loading, login, oauthLogin, register, logout }),
     [user, loading]
   );
 

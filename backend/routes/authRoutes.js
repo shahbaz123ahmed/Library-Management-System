@@ -1,6 +1,7 @@
 const express = require("express");
 const { body } = require("express-validator");
 const { register, login, me } = require("../controllers/authController");
+const { googleLogin, githubLogin } = require("../controllers/oauthController");
 const auth = require("../middleware/auth");
 const validate = require("../middleware/validate");
 
@@ -28,5 +29,8 @@ router.post(
 );
 
 router.get("/me", auth, me);
+
+router.post("/google", googleLogin);
+router.post("/github", githubLogin);
 
 module.exports = router;

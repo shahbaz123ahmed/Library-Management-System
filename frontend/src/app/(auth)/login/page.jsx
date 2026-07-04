@@ -1,20 +1,85 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { AuthInput, useAuthTheme } from "@/components/auth/AuthBackground";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, user, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { login, oauthLogin, user, loading: authLoading } = useAuth();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const t = useAuthTheme();
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        // We need the user's profile info. We can either send the access_token to the backend, 
+        // or fetch profile here and send it. Actually, google-auth-library expects an idToken.
+        // Wait, useGoogleLogin with flow: 'implicit' returns an access_token, not id_token.
+        // To get an id_token, we use credential from <GoogleLogin> or we fetch the userinfo.
+        // Let's fetch user info and send it to backend, OR use the access token in backend.
+        const userInfo = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        
+        // Let's send a custom request to our backend with the user info
+        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/google`, {
+          // Since we changed backend to expect an idToken, we need to adapt backend or just use a specialized route.
+          // Let's pass the google token and handle it.
+          token: tokenResponse.access_token,
+          userInfo: userInfo.data // Fallback for our backend
+        });
+        
+        // Now login to context
+        oauthLogin(res.data.token, res.data);
+        toast.success("Successfully logged in with Google!");
+      } catch (err) {
+        console.error(err);
+        toast.error("Google login failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => toast.error("Google login was cancelled")
+  });
+
+  const githubProcessed = useRef(false);
+
+  // Handle GitHub OAuth callback
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code && !githubProcessed.current) {
+      githubProcessed.current = true;
+      const handleGithubCallback = async () => {
+        try {
+          setLoading(true);
+          const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/github`, { code });
+          oauthLogin(res.data.token, res.data);
+          toast.success("Successfully logged in with GitHub!");
+          
+          // Clean up the URL
+          router.replace("/dashboard");
+        } catch (err) {
+          console.error(err);
+          toast.error("GitHub login failed");
+          githubProcessed.current = false;
+        } finally {
+          setLoading(false);
+        }
+      };
+      handleGithubCallback();
+    }
+  }, [searchParams, oauthLogin, router]);
 
   // Only redirect after auth is done loading
   useEffect(() => {
@@ -190,7 +255,8 @@ export default function LoginPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
-              onClick={() => window.location.href = "https://www.google.com/"}
+              onClick={() => googleLogin()}
+              disabled={loading}
             >
               <span>🌐</span>
               <span>Google</span>
@@ -200,7 +266,12 @@ export default function LoginPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
-              onClick={() => window.location.href = "https://github.com/topics/login"}
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+                if (!clientId) return toast.error("GitHub Client ID missing in env");
+                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=user:email`;
+              }}
+              disabled={loading}
             >
               <span>🐱</span>
               <span>GitHub</span>

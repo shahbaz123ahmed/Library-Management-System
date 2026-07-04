@@ -1,22 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { AuthInput, useAuthTheme } from "@/components/auth/AuthBackground";
 
 export default function RegisterPage() {
   const router     = useRouter();
-  const { register } = useAuth();
+  const searchParams = useSearchParams();
+  const { oauthLogin, register } = useAuth();
 
   const [form, setForm] = useState({
     name: "", email: "", password: "", confirm: "",
   });
   const [loading, setLoading] = useState(false);
   const t = useAuthTheme();
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/google`, {
+          token: tokenResponse.access_token
+        });
+        
+        oauthLogin(res.data.token, res.data);
+        toast.success("Successfully signed up/logged in with Google!");
+      } catch (err) {
+        console.error(err);
+        toast.error("Google signup failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => toast.error("Google signup was cancelled")
+  });
+
+  const githubProcessed = useRef(false);
+
+  // Handle GitHub OAuth callback
+  useEffect(() => {
+    const code = searchParams.get('code');
+    if (code && !githubProcessed.current) {
+      githubProcessed.current = true;
+      const handleGithubCallback = async () => {
+        try {
+          setLoading(true);
+          const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/github`, { code });
+          oauthLogin(res.data.token, res.data);
+          toast.success("Successfully logged in with GitHub!");
+          
+          // Clean up the URL
+          router.replace("/dashboard");
+        } catch (err) {
+          console.error(err);
+          toast.error("GitHub login failed");
+          githubProcessed.current = false;
+        } finally {
+          setLoading(false);
+        }
+      };
+      handleGithubCallback();
+    }
+  }, [searchParams, oauthLogin, router]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -209,7 +260,8 @@ export default function RegisterPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
-              onClick={() => window.location.href = "https://www.google.com/"}
+              onClick={() => googleLogin()}
+              disabled={loading}
             >
               <span>🌐</span>
               <span>Google</span>
@@ -219,7 +271,12 @@ export default function RegisterPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
-              onClick={() => window.location.href = "https://github.com/topics/login"}
+              onClick={() => {
+                const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+                if (!clientId) return toast.error("GitHub Client ID missing in env");
+                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=user:email`;
+              }}
+              disabled={loading}
             >
               <span>🐱</span>
               <span>GitHub</span>
