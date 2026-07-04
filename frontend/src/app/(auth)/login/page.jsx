@@ -293,3 +293,11 @@ function LoginContent() {
     </>
   );
 }
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-[#e2f0ed]">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}

@@ -298,3 +298,11 @@ function RegisterContent() {
     </>
   );
 }
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center text-[#e2f0ed]">Loading...</div>}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
