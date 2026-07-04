@@ -1,6 +1,7 @@
 const Book = require("../models/Book");
 const Transaction = require("../models/Transaction");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 const calculateFine = require("../utils/fineCalculator");
 
 // ── Student requests to borrow a book via chat ──────────────────────────────
@@ -103,6 +104,15 @@ const approveRequest = async (req, res, next) => {
       targetUserName: targetUser ? targetUser.name : "",
       metadata: { dueDays }
     };
+
+    // Notify the user that their request was approved
+    await Notification.create({
+      recipientId: transaction.userId,
+      type: "BORROW_APPROVED",
+      title: "Borrow Request Approved",
+      message: `✅ Great news! Your request to borrow "${book.title}" has been approved. The book is ready for pickup at your selected library. Please visit the library during working hours to collect it.`,
+      bookId: book._id,
+    });
 
     res.json({ transaction });
   } catch (error) {
@@ -283,6 +293,15 @@ const rejectRequest = async (req, res, next) => {
       targetUser: targetUser ? targetUser._id : null,
       targetUserName: targetUser ? targetUser.name : ""
     };
+
+    // Notify the user that their request was rejected
+    await Notification.create({
+      recipientId: transaction.userId,
+      type: "BORROW_REJECTED",
+      title: "Borrow Request Rejected",
+      message: `❌ Unfortunately, your borrowing request for "${book ? book.title : 'a book'}" could not be approved at this time. The book may be unavailable or currently unavailable for borrowing. Please try another book or contact the librarian for more information.`,
+      bookId: book ? book._id : null,
+    });
 
     res.json({ message: "Request rejected" });
   } catch (error) {

@@ -230,11 +230,11 @@ const listBooks = async (req, res, next) => {
         const aAvail = a.available > 0 ? 1 : 0;
         const bAvail = b.available > 0 ? 1 : 0;
         if (aAvail !== bAvail) return bAvail - aAvail;
-        if (sortCriteria === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
         if (sortCriteria === "oldest") return new Date(a.createdAt) - new Date(b.createdAt);
         if (sortCriteria === "popularity") return (b.borrowCount || 0) - (a.borrowCount || 0);
         if (sortCriteria === "rating") return (b.rating || 0) - (a.rating || 0);
-        return (b.borrowCount || 0) - (a.borrowCount || 0);
+        // Default to newest first (createdAt descending)
+        return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
 

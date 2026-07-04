@@ -8,11 +8,11 @@ const auditMiddleware = require("../middleware/auditMiddleware");
 const router = express.Router();
 
 router.get("/", auth, getNotifications);
-router.get("/badge", auth, role("admin", "librarian"), getBadge);
+router.get("/badge", auth, getBadge);
 router.post("/reminders", auth, role("admin", "librarian"), auditMiddleware("NOTIFICATION"), sendReminders);
 
-// Librarian in-app notification inbox
-router.get("/inbox", auth, role("librarian"), getInbox);
-router.patch("/inbox/:id/read", auth, role("librarian"), markRead);
+// User in-app notification inbox
+router.get("/inbox", auth, getInbox);
+router.patch("/inbox/:id/read", auth, markRead);
 
 module.exports = router;

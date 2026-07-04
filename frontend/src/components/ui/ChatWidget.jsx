@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import toast from "react-hot-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { processChatMessage } from "@/services/chatbotService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ const initialMessage = {
 
 // ─── Sub-component: Book cover with fallback ──────────────────────────────────
 function BookCover({ coverImage, title }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [error, setError] = useState(false);
 
   if (coverImage && !error) {
@@ -41,7 +44,9 @@ function BookCover({ coverImage, title }) {
       <img
         src={src}
         alt={title}
-        className="h-24 w-16 rounded-lg object-cover shadow-md border border-slate-200"
+        className={`h-24 w-16 rounded-lg object-cover shadow-md border ${
+          isDark ? "border-slate-700" : "border-slate-200"
+        }`}
         onError={() => setError(true)}
         loading="lazy"
       />
@@ -49,7 +54,9 @@ function BookCover({ coverImage, title }) {
   }
 
   return (
-    <div className="flex h-24 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-teal-50 to-slate-100 text-3xl border border-slate-200 shrink-0 shadow-inner">
+    <div className={`flex h-24 w-16 items-center justify-center rounded-lg text-3xl border shrink-0 shadow-inner ${
+      isDark ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-gradient-to-br from-teal-50 to-slate-100 border-slate-200 text-slate-700"
+    }`}>
       📚
     </div>
   );
@@ -57,12 +64,18 @@ function BookCover({ coverImage, title }) {
 
 // ─── Sub-component: Typing dots ───────────────────────────────────────────────
 function TypingIndicator() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   return (
-    <div className="inline-flex items-center gap-1 rounded-2xl bg-white border border-slate-100 px-4 py-3 shadow-sm">
+    <div className={`inline-flex items-center gap-1 rounded-2xl border px-4 py-3 shadow-sm ${
+      isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-100"
+    }`}>
       {[0, 0.2, 0.4].map((delay, i) => (
         <span
           key={i}
-          className="typing-dot h-2 w-2 rounded-full bg-slate-400 inline-block animate-bounce"
+          className={`typing-dot h-2 w-2 rounded-full inline-block animate-bounce ${
+            isDark ? "bg-slate-500" : "bg-slate-400"
+          }`}
           style={{ animationDelay: `${delay}s`, animationDuration: "1s" }}
         />
       ))}
@@ -72,6 +85,8 @@ function TypingIndicator() {
 
 // ─── Sub-component: Book result card ─────────────────────────────────────────
 function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const isNew = book.publishedYear && book.publishedYear >= 2023;
   const isPopular = book.borrowCount && book.borrowCount >= 4;
 
@@ -79,7 +94,9 @@ function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group rounded-xl border border-slate-200 bg-white p-3 text-left transition-all duration-250 hover:shadow-lg hover:border-teal-300 book-card-hover relative overflow-hidden"
+      className={`group rounded-xl border p-3 text-left transition-all duration-250 hover:shadow-lg book-card-hover relative overflow-hidden ${
+        isDark ? "bg-slate-800 border-slate-700 hover:border-teal-500/50" : "bg-white border-slate-200 hover:border-teal-300"
+      }`}
     >
       {/* Badges container */}
       <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
@@ -115,12 +132,14 @@ function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
 
         <div className="flex-1 min-w-0">
           <p
-            className="text-sm font-semibold text-slate-800 pr-12 truncate group-hover:text-teal-700 transition-colors"
+            className={`text-sm font-semibold pr-12 truncate transition-colors ${
+              isDark ? "text-slate-200 group-hover:text-teal-400" : "text-slate-800 group-hover:text-teal-700"
+            }`}
             title={book.title}
           >
             {book.title}
           </p>
-          <p className="text-xs text-slate-500 truncate" title={book.author}>
+          <p className={`text-xs truncate ${isDark ? "text-slate-400" : "text-slate-500"}`} title={book.author}>
             by {book.author}
           </p>
 
@@ -129,36 +148,42 @@ function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
               ⭐ {Number(book.rating || 4.5).toFixed(1)}
             </span>
             {book.publishedYear && (
-              <span className="text-[10px] text-slate-400">
+              <span className={`text-[10px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>
                 · {book.publishedYear}
               </span>
             )}
             {book.category && (
-              <span className="inline-block rounded-full bg-purple-50 border border-purple-100 px-2 py-0.5 text-[9px] font-medium text-purple-600">
+              <span className={`inline-block rounded-full border px-2 py-0.5 text-[9px] font-medium ${
+                isDark ? "bg-purple-900/20 border-purple-800 text-purple-400" : "bg-purple-50 border-purple-100 text-purple-600"
+              }`}>
                 {book.category}
               </span>
             )}
           </div>
 
           {book.description && (
-            <p className="mt-1.5 text-[11px] text-slate-500 line-clamp-2 leading-relaxed italic pr-2">
+            <p className={`mt-1.5 text-[11px] line-clamp-2 leading-relaxed italic pr-2 ${
+              isDark ? "text-slate-400" : "text-slate-500"
+            }`}>
               {book.description}
             </p>
           )}
 
           <div className="mt-2 flex items-center gap-2 flex-wrap">
             <span
-              className={`text-[10px] font-medium ${book.available > 0 ? "text-green-600" : "text-red-500"
+              className={`text-[10px] font-medium ${book.available > 0 ? (isDark ? "text-green-400" : "text-green-600") : "text-red-500"
                 }`}
             >
               {book.available > 0 ? `✅ ${book.available} available` : "❌ Out of stock"}
             </span>
-            <span className="text-[10px] text-slate-400">· {book.total} total</span>
+            <span className={`text-[10px] ${isDark ? "text-slate-500" : "text-slate-400"}`}>· {book.total} total</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5">
+      <div className={`mt-3 flex flex-wrap gap-1.5 border-t pt-2.5 ${
+        isDark ? "border-slate-700" : "border-slate-100"
+      }`}>
         {book.available > 0 ? (
           <motion.button
             whileHover={{ scale: 1.04 }}
@@ -198,6 +223,9 @@ function BookResultCard({ book, onBorrow, onHold, onStatus, borrowingId }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function ChatWidget() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatLanguage, setChatLanguage] = useState(null);
@@ -1064,7 +1092,7 @@ export default function ChatWidget() {
         whileTap={{ scale: 0.95 }}
         type="button"
         onClick={() => setChatOpen((p) => !p)}
-        className={`fixed bottom-6 right-6 z-30 rounded-full px-5 py-3 text-sm font-semibold text-white shadow-xl transition-all ${chatOpen
+        className={`fixed bottom-3 right-6 z-[60] rounded-full px-5 py-3 text-sm font-semibold text-white shadow-xl transition-all ${chatOpen
             ? "bg-slate-600 hover:bg-slate-700"
             : "bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 hover:from-blue-700 hover:via-teal-700 hover:to-green-700 chat-attention"
           }`}
@@ -1080,10 +1108,14 @@ export default function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="fixed bottom-20 right-6 z-30 w-96 max-w-[90vw] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            className={`fixed bottom-[64px] right-6 z-[60] w-96 max-w-[90vw] max-h-[calc(100vh-80px)] flex flex-col overflow-hidden rounded-2xl border shadow-2xl ${
+              isDark ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"
+            }`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-blue-600/20 bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 px-4 py-3">
+            <div className={`flex items-center justify-between border-b px-4 py-3 ${
+              isDark ? "bg-slate-800 border-slate-700" : "bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 border-blue-600/20"
+            }`}>
               <div className="flex items-center gap-2">
                 <span className="text-xl">📚</span>
                 <div>
@@ -1129,7 +1161,9 @@ export default function ChatWidget() {
             </div>
 
             {/* Messages */}
-            <div className="chat-scroll max-h-[420px] min-h-[280px] overflow-y-auto px-4 py-3 space-y-3 bg-gradient-to-b from-slate-50/50 to-white">
+            <div className={`chat-scroll flex-1 max-h-[420px] min-h-[280px] overflow-y-auto px-4 py-3 space-y-3 ${
+              isDark ? "bg-slate-900" : "bg-gradient-to-b from-slate-50/50 to-white"
+            }`}>
               {chatMessages.map((msg, idx) => (
                 <motion.div
                   key={msg.id || idx}
@@ -1142,7 +1176,9 @@ export default function ChatWidget() {
                   <div
                     className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${msg.role === "user"
                         ? "bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 text-white"
-                        : "bg-white text-slate-700 border border-slate-100"
+                        : isDark
+                          ? "bg-slate-800 text-slate-200 border border-slate-700"
+                          : "bg-white text-slate-700 border border-slate-100"
                       }`}
                   >
                     <div className="whitespace-pre-wrap">{msg.text}</div>
@@ -1170,7 +1206,11 @@ export default function ChatWidget() {
                           key={s}
                           type="button"
                           onClick={() => handleSuggestionClick(s)}
-                          className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-all shadow-sm"
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition-all shadow-sm ${
+                            isDark
+                              ? "border-slate-600 bg-slate-800 text-slate-300 hover:border-teal-500 hover:text-teal-400"
+                              : "border-blue-200 bg-white text-blue-600 hover:bg-blue-50 hover:border-blue-400"
+                          }`}
                         >
                           {s}
                         </button>
@@ -1243,7 +1283,9 @@ export default function ChatWidget() {
             </div>
 
             {/* Input area */}
-            <div className="border-t border-slate-200 bg-white px-3 py-3">
+            <div className={`border-t px-3 py-3 ${
+              isDark ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"
+            }`}>
               {!chatLanguage ? (
                 <div className="flex gap-2">
                   <button
@@ -1256,7 +1298,9 @@ export default function ChatWidget() {
                   <button
                     type="button"
                     onClick={() => handleLanguageSelect("en")}
-                    className="flex-1 rounded-full border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+                    className={`flex-1 rounded-full border px-4 py-2.5 text-sm font-semibold transition-all ${
+                      isDark ? "border-slate-600 text-slate-300 hover:bg-slate-700" : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
                   >
                     IN English
                   </button>
@@ -1285,7 +1329,11 @@ export default function ChatWidget() {
                                 ? "Kuch bhi puchiye (e.g. my books, fines)..."
                                 : "Search by title, author, or commands (fines, due date)..."
                       }
-                      className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                      className={`w-full rounded-full border px-4 py-2 text-sm focus:outline-none focus:ring-2 transition-all ${
+                        isDark 
+                          ? "bg-slate-900 border-slate-700 text-slate-200 focus:border-teal-500 focus:ring-teal-500/20 placeholder:text-slate-500" 
+                          : "bg-slate-50 border-slate-200 text-slate-800 focus:border-blue-400 focus:ring-blue-100 placeholder:text-slate-400"
+                      }`}
                     />
                     {searchMode === "isbn" && (
                       <p className="absolute -bottom-5 left-1 text-[10px] text-slate-400">

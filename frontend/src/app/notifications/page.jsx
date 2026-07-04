@@ -37,8 +37,6 @@ export default function NotificationsPage() {
     if (!loading) {
       if (!user) {
         router.push("/login");
-      } else if (user.role !== "admin" && user.role !== "librarian") {
-        router.push("/dashboard");
       }
     }
   }, [loading, user, router]);
@@ -81,7 +79,7 @@ export default function NotificationsPage() {
   }, [user, page, search]);
 
   useEffect(() => {
-    if (!user || user.role !== "librarian") return;
+    if (!user) return;
     fetchInbox();
   }, [user, inboxPage]);
 
@@ -159,7 +157,9 @@ export default function NotificationsPage() {
     <AppLayout title="Notifications">
 
       {/* ── Premium Hero Banner ── */}
-      <motion.div
+      {user?.role !== "student" && (
+        <>
+          <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
@@ -393,10 +393,12 @@ export default function NotificationsPage() {
       <div className="mt-6">
         <Pagination page={page} pages={pages} onChange={setPage} />
       </div>
+        </>
+      )}
 
-      {/* ── Librarian Inbox (Book Assignments from Admin) ── */}
-      {user?.role === "librarian" && (
-        <div className="mt-10">
+      {/* ── User Inbox (Book Assignments, Approvals) ── */}
+      {user?.role !== "admin" && (
+        <div className={user?.role !== "student" ? "mt-10" : ""}>
           <div className="flex items-center gap-3 mb-5">
             <div className={`h-8 w-1 rounded-full bg-gradient-to-b from-teal-400 to-emerald-500`} />
             <h3 className={`text-lg font-bold ${isDark ? "text-white" : "text-slate-800"}`}>📬 Book Catalog Notifications</h3>
@@ -420,36 +422,40 @@ export default function NotificationsPage() {
                   className="rounded-2xl bg-gradient-to-r from-blue-600 via-teal-600 to-green-600 p-[1.5px] transition-all duration-300"
                 >
                   <div
-                    className={`rounded-[15px] p-5 flex items-start gap-4 transition-colors duration-300 ${
+                    className={`rounded-[15px] p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-colors duration-300 ${
                       notif.isRead
                         ? isDark ? "bg-slate-900/95 backdrop-blur-sm" : "bg-white"
                         : isDark ? "bg-slate-900/80 backdrop-blur-sm shadow-[inset_0_0_12px_rgba(20,184,166,0.15)]" : "bg-teal-50/50"
                     }`}
                   >
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
-                      notif.type === "WORKSPACE_REQUEST_APPROVED"
-                        ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
-                        : isDark ? "bg-teal-500/15 text-teal-400" : "bg-teal-50 text-teal-600"
-                    }`}>
-                      {notif.type === "WORKSPACE_REQUEST_APPROVED" ? "✅" : "📚"}
-                    </span>
-                    <div className="flex-1">
-                      <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{notif.title}</p>
-                      <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{notif.message}</p>
-                      <p className={`text-xs mt-1 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
-                        {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </p>
+                    <div className="flex items-start gap-3 sm:gap-4 flex-1 w-full">
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
+                        notif.type.includes("APPROVED")
+                          ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                          : notif.type.includes("REJECTED")
+                            ? isDark ? "bg-red-500/15 text-red-400" : "bg-red-50 text-red-600"
+                            : isDark ? "bg-teal-500/15 text-teal-400" : "bg-teal-50 text-teal-600"
+                      }`}>
+                        {notif.type.includes("APPROVED") ? "✅" : notif.type.includes("REJECTED") ? "❌" : "📚"}
+                      </span>
+                      <div className="flex-1">
+                        <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>{notif.title}</p>
+                        <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{notif.message}</p>
+                        <p className={`text-xs mt-1 ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                          {new Date(notif.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
                     </div>
                     {!notif.isRead && (
                       <button
                         onClick={() => handleMarkRead(notif._id)}
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
+                        className={`shrink-0 w-full sm:w-auto rounded-full px-4 py-2 sm:px-3 sm:py-1 text-xs font-medium border transition-colors ${
                           isDark
                             ? "border-teal-500/30 text-teal-400 hover:bg-teal-500/10"
                             : "border-teal-200 text-teal-600 hover:bg-teal-100"
                         }`}
                       >
-                        Mark read
+                        Mark as read
                       </button>
                     )}
                   </div>

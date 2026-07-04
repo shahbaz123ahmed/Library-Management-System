@@ -158,17 +158,27 @@ export default function Topbar({ title }) {
   }, [allMessages.length]);
 
   const [notifOpen, setNotifOpen] = useState(false);
-  const [badge, setBadge] = useState({ pendingRequests: 0, overdue: 0, total: 0 });
+  const [badge, setBadge] = useState({ pendingRequests: 0, overdue: 0, total: 0, unreadInbox: 0 });
+  const [inboxItems, setInboxItems] = useState([]);
   const notifRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const mobileMenuRef = useRef(null);
+
+  // Fetch inbox items when dropdown is opened
+  useEffect(() => {
+    if (notifOpen && user) {
+      api.get("/notifications/inbox", { params: { limit: 5 } })
+        .then((res) => setInboxItems(res.data.items))
+        .catch(() => {});
+    }
+  }, [notifOpen, user]);
 
   // Poll badge count every 60s for admin/librarian — use stable primitives as deps to avoid stacking intervals
   const userId = user?._id;
   const userRole = user?.role;
 
   useEffect(() => {
-    if (!userId || (userRole !== "admin" && userRole !== "librarian")) return;
+    if (!userId) return;
 
     const fetchBadge = async () => {
       // Skip fetch when tab is not visible to avoid unnecessary requests
@@ -202,7 +212,7 @@ export default function Topbar({ title }) {
     { label: "Dashboard", href: "/dashboard", roles: ["admin", "librarian", "student"] },
     { label: "Books", href: "/books", roles: ["admin", "librarian", "student"] },
     { label: "My Shelf", href: "/my-shelf", roles: ["student", "librarian"] },
-    { label: "Notifications", href: "/notifications", roles: ["admin", "librarian"] },
+    { label: "Notifications", href: "/notifications", roles: ["admin", "librarian", "student"] },
     { label: "Transactions", href: "/transactions", roles: ["admin", "librarian"] },
     { label: "Admin Catalog", href: "/admin-catalog", roles: ["librarian"] },
     { label: "Users", href: "/users", roles: ["admin"] },
@@ -292,8 +302,8 @@ export default function Topbar({ title }) {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          {/* ── Notification Bell (admin/librarian only) ── */}
-          {user && (user.role === "admin" || user.role === "librarian") && (
+          {/* ── Notification Bell (all users) ── */}
+          {user && (
             <div className="relative" ref={notifRef}>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -333,7 +343,7 @@ export default function Topbar({ title }) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
                     transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                    className={`absolute right-0 top-12 z-50 w-72 overflow-hidden rounded-2xl border shadow-2xl ${
+                    className={`fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-12 z-50 sm:w-80 overflow-hidden rounded-2xl border shadow-2xl ${
                       isDark
                         ? "bg-slate-900 border-slate-700"
                         : "bg-white border-slate-200"
@@ -353,8 +363,59 @@ export default function Topbar({ title }) {
 
                     {/* Items */}
                     <div className="divide-y divide-slate-100/10">
+                      {/* Inbox / Unread Notifications list */}
+                      {user && (user.role === "student" || user.role === "librarian") && inboxItems.length > 0 ? (
+                        <>
+                          {inboxItems.slice(0, 4).map((item) => (
+                            <button
+                              key={item._id}
+                              type="button"
+                              onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
+                              className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
+                                isDark ? "hover:bg-slate-800" : "hover:bg-slate-50"
+                              } ${!item.isRead ? (isDark ? "bg-slate-800/40" : "bg-teal-50/50") : ""}`}
+                            >
+                              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm ${
+                                !item.isRead
+                                  ? "bg-teal-500/15 text-teal-500"
+                                  : isDark ? "bg-slate-800 text-slate-500" : "bg-slate-100 text-slate-400"
+                              }`}>
+                                {item.type === 'BORROW_APPROVED' ? '✅' : item.type === 'BORROW_REJECTED' ? '❌' : '📬'}
+                              </span>
+                              <div className="flex-1 overflow-hidden">
+                                <p className={`text-xs font-semibold truncate ${ isDark ? "text-slate-200" : "text-slate-800"}`}>{item.title}</p>
+                                <p className={`text-[11px] line-clamp-2 mt-0.5 ${ isDark ? "text-slate-500" : "text-slate-400"}`}>
+                                  {item.type === 'BORROW_APPROVED' 
+                                    ? `Your request to borrow "${item.bookId?.title || 'a book'}" has been approved by the librarian.` 
+                                    : item.type === 'BORROW_REJECTED'
+                                      ? `Your request to borrow "${item.bookId?.title || 'a book'}" has been rejected by the librarian.`
+                                      : item.message}
+                                </p>
+                              </div>
+                              {!item.isRead && (
+                                <span className="h-2 w-2 rounded-full bg-teal-500 mt-1 shrink-0"></span>
+                              )}
+                            </button>
+                          ))}
+                          {inboxItems.length > 4 && (
+                            <button
+                              onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
+                              className={`w-full py-2.5 text-xs text-center font-medium border-t transition-colors ${
+                                isDark ? "border-slate-700/50 text-teal-400 hover:bg-slate-800/50" : "border-slate-100 text-teal-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              View all notifications
+                            </button>
+                          )}
+                        </>
+                      ) : user && (user.role === "student" || user.role === "librarian") && (
+                        <div className="px-4 py-4 text-center">
+                          <p className={`text-xs ${ isDark ? "text-slate-500" : "text-slate-400"}`}>No new messages in your inbox.</p>
+                        </div>
+                      )}
+
                       {/* Borrow requests */}
-                      {user && user.role !== "admin" && (
+                      {user && user.role === "librarian" && (
                         <button
                           type="button"
                           onClick={() => { setNotifOpen(false); router.push("/notifications"); }}
@@ -410,7 +471,8 @@ export default function Topbar({ title }) {
                       )}
 
                       {/* Overdue books */}
-                      <button
+                      {user && (user.role === "librarian" || user.role === "admin") && (
+                        <button
                         type="button"
                         onClick={() => { setNotifOpen(false); router.push("/transactions"); }}
                         className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
@@ -434,6 +496,7 @@ export default function Topbar({ title }) {
                           </span>
                         )}
                       </button>
+                      )}
                     </div>
 
                     {/* Footer */}

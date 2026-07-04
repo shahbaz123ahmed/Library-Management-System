@@ -41,7 +41,7 @@ const getBadge = async (req, res, next) => {
       showPending ? Transaction.countDocuments({ status: "requested" }) : 0,
       Transaction.countDocuments({ status: "issued", dueDate: { $lt: now } }),
       showWorkspaceRequests ? WorkspaceRequest.countDocuments({ status: "pending" }) : 0,
-      showPending ? Notification.countDocuments({ recipientId: req.user._id, isRead: false }) : 0,
+      Notification.countDocuments({ recipientId: req.user._id, isRead: false }),
     ]);
 
     res.json({

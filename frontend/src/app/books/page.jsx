@@ -57,6 +57,22 @@ export default function BooksPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const handleOpen = () => openCreate();
+    window.addEventListener('openAddBookModal', handleOpen);
+    
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("action") === "new") {
+        setTimeout(() => {
+          openCreate();
+          window.history.replaceState(null, '', '/books');
+        }, 100);
+      }
+    }
+    return () => window.removeEventListener('openAddBookModal', handleOpen);
+  }, []);
+
   const canManage = user?.role === "admin" || user?.role === "librarian";
   const isLibrarian = user?.role === "librarian";
   const { theme } = useTheme();
@@ -1012,23 +1028,6 @@ export default function BooksPage() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* ===== FLOATING ACTION BUTTON (ADD BOOK) ===== */}
-      {canManage && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.1, boxShadow: "0 10px 25px rgba(13, 148, 136, 0.5)" }}
-          whileTap={{ scale: 0.9 }}
-          onClick={openCreate}
-          className="fixed bottom-20 right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-r from-teal-500 to-teal-600 text-2xl text-white shadow-xl shadow-teal-600/30 transition-all"
-          title="Add New Book"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-        </motion.button>
-      )}
     </AppLayout>
   );
 }

@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["BOOK_ASSIGNED", "WORKSPACE_REQUEST_APPROVED", "WORKSPACE_REQUEST_REJECTED", "GENERAL"],
+      enum: ["BOOK_ASSIGNED", "WORKSPACE_REQUEST_APPROVED", "WORKSPACE_REQUEST_REJECTED", "BORROW_APPROVED", "BORROW_REJECTED", "GENERAL"],
       default: "GENERAL",
     },
     title: { type: String, required: true },
