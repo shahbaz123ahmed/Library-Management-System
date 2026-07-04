@@ -1021,7 +1021,7 @@ export default function BooksPage() {
           whileHover={{ scale: 1.1, boxShadow: "0 10px 25px rgba(13, 148, 136, 0.5)" }}
           whileTap={{ scale: 0.9 }}
           onClick={openCreate}
-          className="fixed bottom-24 right-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-r from-teal-500 to-teal-600 text-2xl text-white shadow-xl shadow-teal-600/30 transition-all md:bottom-28 md:right-10"
+          className="fixed bottom-20 right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-r from-teal-500 to-teal-600 text-2xl text-white shadow-xl shadow-teal-600/30 transition-all"
           title="Add New Book"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
