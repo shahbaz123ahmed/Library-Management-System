@@ -1,67 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { AuthShell, AuthInput } from "@/components/auth/AuthBackground";
+import { AuthInput, useAuthTheme } from "@/components/auth/AuthBackground";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { login, user, loading: authLoading } = useAuth();
+export default function RegisterPage() {
+  const router     = useRouter();
+  const { register } = useAuth();
 
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", password: "", confirm: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  // Only redirect after auth is done loading
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.replace("/dashboard");
-    }
-  }, [authLoading, user, router]);
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <AuthShell isDark={isDark} setIsDark={setIsDark}>
-        {(t) => (
-          <div className="flex min-h-screen items-center justify-center">
-            <div className="text-center">Loading...</div>
-          </div>
-        )}
-      </AuthShell>
-    );
-  }
-
-  // If user is logged in, don't show login form (redirect happens in useEffect)
-  if (user) {
-    return null;
-  }
+  const t = useAuthTheme();
 
   const onSubmit = async (e) => {
     e.preventDefault();
+
+    if (form.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    if (form.password !== form.confirm) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(form);
-      toast.success("Welcome back! 📚");
+      // Pass only the fields your API expects — drop `confirm` before sending
+      const { confirm, ...payload } = form;
+      await register(payload);
+      toast.success("Account created! Welcome to the Library 📚");
       router.push("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
+      toast.error(error.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
+  if (!t) return null;
+
   return (
-    <AuthShell activeTab="login" isDark={isDark} setIsDark={setIsDark}>
-      {(t) => (
-        <>
+    <>
           {/* Circular Logo Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="w-14 h-14 rounded-full bg-[#f4e8dc]/60 border border-[#e8d8c8] flex items-center justify-center text-xl shadow-inner">
+          <div className="flex justify-center mb-5">
+            <div className="w-14 h-14 rounded-full bg-[#22c1a5]/10 border border-[#22c1a5]/20 flex items-center justify-center text-xl shadow-inner text-[#22c1a5]">
               🏛️
             </div>
           </div>
@@ -71,17 +61,28 @@ export default function LoginPage() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
-            className="text-center mb-6"
+            className="text-center mb-5"
           >
-            <h2 className="font-serif text-2xl font-bold text-stone-850 tracking-tight">
-              Welcome Back
+            <h2 className="font-serif text-2xl font-bold text-[#e2f0ed] tracking-tight">
+              Create an Account
             </h2>
-            <p className="text-xs text-stone-500 mt-1 font-medium">
-              Sign in to manage your library
+            <p className="text-xs text-[#6b8e88] mt-1 font-medium">
+              Join the library and start exploring
             </p>
           </motion.div>
 
           <form onSubmit={onSubmit}>
+            <AuthInput
+              label="Full Name"
+              type="text"
+              icon="👤"
+              value={form.name}
+              delay={0}
+              t={t}
+              required
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Your Name"
+            />
             <AuthInput
               label="Email Address"
               type="email"
@@ -90,11 +91,10 @@ export default function LoginPage() {
               delay={0.05}
               t={t}
               required
-              autoComplete="username"
+              autoComplete="email"
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="librarian@library.com"
+              placeholder="student@library.com"
             />
-            
             <AuthInput
               label="Password"
               type="password"
@@ -103,27 +103,40 @@ export default function LoginPage() {
               delay={0.1}
               t={t}
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
+              minLength={6}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="••••••••••••"
-              rightLabel={
-                <Link href="/forgot-password" className="text-xs font-semibold text-[#8b5e3c] hover:underline font-sans">
-                  Forgot Password?
-                </Link>
-              }
+            />
+            <AuthInput
+              label="Confirm Password"
+              type="password"
+              icon="🔑"
+              value={form.confirm}
+              delay={0.15}
+              t={t}
+              required
+              autoComplete="new-password"
+              minLength={6}
+              onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+              placeholder="••••••••••••"
             />
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center gap-2 mb-6 mt-1">
-              <input 
-                type="checkbox" 
-                id="remember" 
-                className="rounded text-[#8b5e3c] focus:ring-[#8b5e3c]/20 w-4 h-4 border-stone-300 accent-[#8b5e3c]" 
-              />
-              <label htmlFor="remember" className="text-xs font-semibold text-stone-600 font-sans cursor-pointer selection:bg-transparent">
-                Remember me
-              </label>
-            </div>
+            {/* Password Match Indicator */}
+            <AnimatePresence>
+              {form.confirm && form.password && (
+                <motion.p
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className={`text-xs -mt-2 mb-4 font-semibold font-sans ${
+                    form.password === form.confirm ? "text-emerald-600" : "text-rose-600"
+                  }`}
+                >
+                  {form.password === form.confirm ? "✓ Passwords match" : "✗ Passwords do not match"}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             {/* Submit Button */}
             <motion.button
@@ -165,7 +178,7 @@ export default function LoginPage() {
                     animate={{ opacity: 1 }}
                     className="flex items-center gap-2"
                   >
-                    Sign In <span>➔</span>
+                    Sign Up <span>➔</span>
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -179,9 +192,9 @@ export default function LoginPage() {
             transition={{ delay: 0.4 }}
             className="flex items-center gap-3 my-5"
           >
-            <div className="flex-1 h-[1px] bg-stone-200" />
-            <span className="text-[11px] font-semibold text-stone-400 font-sans uppercase tracking-wider">or continue with</span>
-            <div className="flex-1 h-[1px] bg-stone-200" />
+            <div className="flex-1 h-[1px] bg-[#1a2e2a]" />
+            <span className="text-[11px] font-semibold text-[#4a6560] font-sans uppercase tracking-wider">or continue with</span>
+            <div className="flex-1 h-[1px] bg-[#1a2e2a]" />
           </motion.div>
 
           {/* Social Sign-in */}
@@ -195,7 +208,7 @@ export default function LoginPage() {
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 py-2.5 px-4 bg-white border border-stone-200 hover:border-stone-300 rounded-xl font-sans text-xs font-semibold text-stone-700 flex items-center justify-center gap-2 shadow-sm transition-all"
+              className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
               onClick={() => window.location.href = "https://www.google.com/"}
             >
               <span>🌐</span>
@@ -205,7 +218,7 @@ export default function LoginPage() {
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 py-2.5 px-4 bg-white border border-stone-200 hover:border-stone-300 rounded-xl font-sans text-xs font-semibold text-stone-700 flex items-center justify-center gap-2 shadow-sm transition-all"
+              className="flex-1 py-2.5 px-4 bg-[#0f1a17] border border-[#1a2e2a] hover:border-[#22c1a5]/40 rounded-xl font-sans text-xs font-semibold text-[#e2f0ed] flex items-center justify-center gap-2 shadow-sm transition-all"
               onClick={() => window.location.href = "https://github.com/topics/login"}
             >
               <span>🐱</span>
@@ -218,15 +231,13 @@ export default function LoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-center mt-6 text-xs text-stone-500 font-sans font-medium"
+            className="text-center mt-6 text-xs text-[#6b8e88] font-sans font-medium"
           >
-            New here?{" "}
-            <Link href="/register" className="text-[#8b5e3c] font-bold hover:underline">
-              Create an account
+            Already a member?{" "}
+            <Link href="/login" className="text-[#0f766e] font-bold hover:underline">
+              Sign In
             </Link>
           </motion.p>
-        </>
-      )}
-    </AuthShell>
+    </>
   );
 }

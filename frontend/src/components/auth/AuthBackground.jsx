@@ -1,255 +1,406 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, createContext, useContext } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
+
+const AuthThemeContext = createContext(null);
+export const useAuthTheme = () => useContext(AuthThemeContext);
 
 export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) {
   const [particles, setParticles] = useState([]);
   const [mounted, setMounted] = useState(false);
+  const [lampOn, setLampOn] = useState(false);
+
+  const dragY = useMotionValue(0);
+  const chainY2 = useTransform(dragY, (y) => 175 + y);
+
+  const playClickSound = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      // A harsh, dry square wave for a physical plastic switch snap
+      osc.type = "square";
+
+      // High frequency plastic impact that drops instantly
+      osc.frequency.setValueAtTime(1500, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.02);
+
+      // Incredibly fast, dry envelope to remove any ring or tone
+      gain.gain.setValueAtTime(0.8, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.035);
+    } catch (e) {
+      // Fail silently if audio is not supported
+    }
+  };
 
   const theme = {
-    text: "#2c1810",
-    subtext: "rgba(44,24,16,0.65)",
-    accent: "#8b5e3c",
-    accentDim: "rgba(139,94,60,0.15)",
-    divider: "rgba(44,24,16,0.1)",
-    socialBg: "#fff",
-    btnGrad: "linear-gradient(135deg, #7a5235 0%, #8d6243 100%)",
+    text: "#e2f0ed",
+    subtext: "rgba(34,193,165,0.6)",
+    accent: "#22c1a5",
+    accentDim: "rgba(34,193,165,0.15)",
+    divider: "rgba(34,193,165,0.15)",
+    socialBg: "#111f1c",
+    btnGrad: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
     btnText: "#fff",
-    cardBg: "#fcfaf7",
+    cardBg: "#0d1916",
   };
 
   useEffect(() => {
     const generateParticles = () => {
-      return Array.from({ length: 25 }, (_, i) => ({
+      return Array.from({ length: 20 }, (_, i) => ({
         id: i,
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
+        left: `${10 + Math.random() * 80}%`,
+        top: `${10 + Math.random() * 80}%`,
         duration: 6 + Math.random() * 8,
         delay: Math.random() * 4,
-        size: 1.5 + Math.random() * 2.5,
+        size: 1 + Math.random() * 1.5,
       }));
     };
-    
     setParticles(generateParticles());
     setMounted(true);
   }, []);
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#0c0f16] flex items-center justify-center p-4">
-        <div className="w-full max-w-5xl h-[650px] bg-[#1a1f2c] rounded-3xl animate-pulse" />
+      <div className="min-h-screen bg-[#0d1916] flex items-center justify-center p-4">
+        <div className="w-full max-w-[1000px] h-[540px] animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0f16] p-4 sm:p-6 md:p-10 selection:bg-[#8b5e3c] selection:text-white">
-      {/* Container Frame */}
-      <div className="w-full max-w-5xl bg-[#1a1f2c] rounded-3xl overflow-hidden shadow-[0_24px_85px_rgba(0,0,0,0.65)] flex flex-col md:flex-row min-h-[640px] border border-stone-800/40 relative">
-        
-        {/* Left Side: Library Branding & Info */}
-        <div className="hidden md:flex md:w-[46%] lg:w-[48%] relative flex-col justify-between p-8 lg:p-10 overflow-hidden border-r border-stone-800/20">
-          {/* Background Image with Dark Tint Overlay */}
-          <div 
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 hover:scale-105"
-            style={{
-              backgroundImage: "url('/library_background.png')",
-            }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#090706]/95 via-[#0d0a08]/85 to-[#090706]/90" />
-          
-          {/* Floating Dust Particles */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {particles.map((p) => (
+    <AuthThemeContext.Provider value={theme}>
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0d1916] p-4 sm:p-6 md:p-10 selection:bg-[#22c1a5] selection:text-black">
+
+        {/* Main Container */}
+        <motion.div
+          layout
+          className="w-full max-w-[1000px] flex flex-col md:flex-row min-h-[540px] relative z-10"
+        >
+
+          {/* Ambient glow when ON (Covering entire scene) */}
+          <AnimatePresence>
+            {lampOn && (
               <motion.div
-                key={p.id}
-                animate={{ y: [0, -35, 0], opacity: [0, 0.35, 0] }}
-                transition={{
-                  duration: p.duration,
-                  delay: p.delay,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                key="ambient"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.2 }}
+                className="fixed inset-0 pointer-events-none z-0"
                 style={{
-                  position: "absolute",
-                  left: p.left,
-                  top: p.top,
-                  width: p.size,
-                  height: p.size,
-                  borderRadius: "50%",
-                  background: "#d4a373",
-                  opacity: 0,
+                  background: "radial-gradient(ellipse at 35% 50%, rgba(255,230,170,0.15) 0%, rgba(255,215,100,0.08) 25%, transparent 60%)",
                 }}
               />
-            ))}
-          </div>
+            )}
+          </AnimatePresence>
 
-          {/* Left Side Content */}
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            {/* Logo and Brand */}
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#d4a373]/15 rounded-xl border border-[#d4a373]/20">
-                  <svg className="w-6 h-6 text-[#d4a373]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <div>
-                  <h1 className="font-serif text-xl font-bold tracking-widest text-[#f0ebe0] uppercase leading-none">Library</h1>
-                  <p className="text-[9px] tracking-[0.25em] font-semibold text-[#d4a373] uppercase mt-1">Management System</p>
-                </div>
-              </div>
+          {/* Floating particles when ON (Covering entire scene) */}
+          <AnimatePresence>
+            {lampOn && (
+              <motion.div
+                key="particles"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5 }}
+                className="fixed inset-0 overflow-hidden pointer-events-none z-0"
+              >
+                {particles.map((p) => (
+                  <motion.div
+                    key={p.id}
+                    animate={{ y: [0, -25, 0], opacity: [0, 0.35, 0] }}
+                    transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                      position: "absolute", left: p.left, top: p.top, width: p.size, height: p.size,
+                      borderRadius: "50%", background: "#22c1a5",
+                    }}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* Taglines */}
-              <div className="mt-8">
-                <h2 className="text-[#f0ebe0] text-sm font-semibold tracking-wider font-sans">Organize. Manage. Inspire.</h2>
-                <p className="text-white/50 text-xs mt-1">A smarter way to manage your library.</p>
-              </div>
+          {/* ====== LEFT SIDE: LAMP PANEL ====== */}
+          <div className="relative flex flex-col items-center justify-between md:w-[46%] lg:w-[48%] p-8 lg:p-10 select-none z-10">
 
-              {/* Stacked Features */}
-              <div className="mt-8 space-y-5">
-                {/* Feature 1 */}
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-white/70 text-sm">
-                    📖
-                  </div>
-                  <div>
-                    <h3 className="text-white/90 text-xs font-semibold">Smart Catalog</h3>
-                    <p className="text-white/50 text-[11px] mt-0.5 leading-normal">Easily manage books, authors and categories.</p>
-                  </div>
-                </div>
-                {/* Feature 2 */}
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-white/70 text-sm">
-                    👥
-                  </div>
-                  <div>
-                    <h3 className="text-white/90 text-xs font-semibold">Member Management</h3>
-                    <p className="text-white/50 text-[11px] mt-0.5 leading-normal">Add, edit and manage library members with ease.</p>
-                  </div>
-                </div>
-                {/* Feature 3 */}
-                <div className="flex items-start gap-3.5">
-                  <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10 text-white/70 text-sm">
-                    📊
-                  </div>
-                  <div>
-                    <h3 className="text-white/90 text-xs font-semibold">Advanced Reports</h3>
-                    <p className="text-white/50 text-[11px] mt-0.5 leading-normal">Track issued books, fines and library activity.</p>
-                  </div>
-                </div>
+            {/* ====== MODERN DESK LAMP ====== */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center items-center -mt-6">
+              <div className="relative w-[240px] h-[420px]">
+                <svg width="240" height="420" viewBox="0 0 240 420" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                  <defs>
+                    <filter id="lampGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="8" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                    <filter id="bigGlow" x="-100%" y="-100%" width="300%" height="300%">
+                      <feGaussianBlur stdDeviation="25" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                    <linearGradient id="lightConeGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#fff2c8" stopOpacity={lampOn ? "0.85" : "0"} />
+                      <stop offset="50%" stopColor="#ffdb70" stopOpacity={lampOn ? "0.25" : "0"} />
+                      <stop offset="100%" stopColor="#ffb300" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id="poleGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#1a1a1a" />
+                      <stop offset="100%" stopColor="#0a0a0a" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* === Light cone (visible when ON) === */}
+                  <motion.g animate={{ opacity: lampOn ? 1 : 0 }} transition={{ duration: 0.8 }}>
+                    <polygon points="65,75 175,75 350,450 -110,450" fill="url(#lightConeGrad)" />
+                    {/* Intense diffuser glow (soft) */}
+                    <ellipse cx="120" cy="75" rx="55" ry="7" fill="#ffffff" filter="url(#lampGlow)" opacity="0.9" />
+                    {/* The bright diffuser (solid) */}
+                    <ellipse cx="120" cy="75" rx="55" ry="7" fill="#fffcf0" />
+                  </motion.g>
+
+                  {/* === Lamp Shade (Larger, Black) === */}
+                  {/* Shade top surface */}
+                  <ellipse cx="120" cy="55" rx="80" ry="15" fill="#0d0d0d" stroke="#1f1f1f" strokeWidth="0.5" />
+                  {/* Shade rim/edge (side) */}
+                  <path
+                    d="M40 55 Q40 75 60 75 L180 75 Q200 75 200 55"
+                    fill="#050505"
+                    stroke="#1f1f1f"
+                    strokeWidth="0.5"
+                  />
+                  {/* Shade bottom rim */}
+                  <ellipse cx="120" cy="75" rx="60" ry="8" fill="#0d0d0d" stroke="#1f1f1f" strokeWidth="0.5" />
+
+                  {/* === Pole === */}
+                  <rect x="117" y="75" width="6" height="265" rx="3" fill="url(#poleGrad)" />
+
+                  {/* === Base === */}
+                  <ellipse cx="120" cy="348" rx="50" ry="8" fill="#0d0d0d" stroke="#1f1f1f" strokeWidth="0.5" />
+                  <path
+                    d="M70 348 Q70 360 85 362 L155 362 Q170 360 170 348"
+                    fill="#050505"
+                    stroke="#1f1f1f"
+                    strokeWidth="0.5"
+                  />
+                  <ellipse cx="120" cy="362" rx="43" ry="6" fill="#0d0d0d" />
+
+                  {/* === Dynamic Stretchable Pull Chain === */}
+                  {/* Thin solid string */}
+                  <motion.line
+                    x1="190" y1="80" x2="190"
+                    style={{ y2: chainY2 }}
+                    stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f"}
+                    strokeWidth="0.5"
+                    animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f" }}
+                    transition={{ duration: 0.5 }}
+                  />
+                  {/* Dotted beads over the string */}
+                  <motion.line
+                    x1="190" y1="82" x2="190"
+                    style={{ y2: chainY2 }}
+                    stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a"}
+                    strokeWidth="1.5"
+                    strokeDasharray="0 5.5"
+                    strokeLinecap="round"
+                    animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a" }}
+                    transition={{ duration: 0.5 }}
+                  />
+                </svg>
+
+                {/* ====== PULL CHAIN KNOB (Draggable) ====== */}
+                <motion.div
+                  drag="y"
+                  dragConstraints={{ top: 0, bottom: 45 }}
+                  dragElastic={0.4}
+                  dragSnapToOrigin={true}
+                  onDragEnd={(e, info) => {
+                    if (info.offset.y > 15) {
+                      setLampOn((prev) => !prev);
+                      playClickSound();
+                    }
+                  }}
+                  animate={{
+                    scale: lampOn ? 1 : [1, 1.05, 1]
+                  }}
+                  transition={lampOn ? { duration: 0.3 } : { duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ cursor: "grabbing" }}
+                  className="absolute z-30 w-6 h-10 rounded-[12px] cursor-grab focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffdb70]/50"
+                  style={{
+                    y: dragY,
+                    top: "175px",
+                    left: "178px", // 190px (chain x) - 12px (half width)
+                    background: lampOn
+                      ? "rgba(255, 219, 112, 0.05)"
+                      : "linear-gradient(180deg, #1a3530, #0f1a17)",
+                    border: `1.5px solid ${lampOn ? "rgba(255, 219, 112, 0.05)" : "#1a3530"}`,
+                    boxShadow: lampOn ? "none" : "none",
+                  }}
+                  aria-label="Drag the chain down to toggle lamp"
+                />
               </div>
             </div>
 
-            {/* Quote block */}
-            <div className="mt-8 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <p className="text-white/80 text-[11px] italic font-serif leading-relaxed">
-                "A library today is a doorway to tomorrow."
+            {/* ====== BRANDING BELOW LAMP ====== */}
+            <motion.div
+              animate={{ opacity: lampOn ? 1 : 0.4 }}
+              transition={{ duration: 0.8 }}
+              className="relative z-10 flex flex-col items-center mt-6 w-full"
+            >
+              <h2 className="text-[#22c1a5] text-[12px] tracking-[0.45em] font-bold uppercase font-sans text-center">
+                Pull the Chain
+              </h2>
+
+              <div className="flex items-center gap-2 mt-2.5 mb-2.5">
+                <div className="w-8 h-[1px] bg-[#22c1a5]/20" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#22c1a5]/40" />
+                <div className="w-8 h-[1px] bg-[#22c1a5]/20" />
+              </div>
+
+              <p className="text-[#22c1a5]/50 text-[9px] tracking-[0.25em] font-semibold uppercase font-sans text-center">
+                To Light the Path
               </p>
+            </motion.div>
+          </div>
+
+
+          {/* ====== RIGHT SIDE: AUTH FORMS PANEL ====== */}
+          <AnimatePresence>
+            {lampOn && (
+              <motion.div
+                key="auth-panel"
+                initial={{ opacity: 0, x: 80, scale: 0.97 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 80, scale: 0.97 }}
+                transition={{ type: "spring", stiffness: 55, damping: 18, mass: 0.8 }}
+                className="flex-1 flex flex-col relative z-20"
+              >
+                <AuthTabs activeTab={activeTab} />
+
+                <div className="flex-1 p-6 sm:p-8 md:p-10 flex flex-col justify-center max-w-md mx-auto w-full relative overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeTab}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="w-full flex flex-col justify-center"
+                    >
+                      {children}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Lamp-off right side placeholder */}
+          {!lampOn && (
+            <div className="hidden md:flex flex-1 items-center justify-center">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.12 }}
+                transition={{ delay: 1.2, duration: 2 }}
+                className="text-[#22c1a5] text-sm font-serif italic text-center px-10"
+              >
+                Pull the chain to illuminate your path...
+              </motion.p>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Right Side: Tabbed Form Container */}
-        <div className="flex-1 bg-[#fcfaf7] flex flex-col justify-between relative">
-          
-          {/* Navigation Tabs at the very top */}
-          <div className="flex border-b border-stone-200/60 bg-stone-50/50">
-            <Link 
-              href="/login" 
-              className={`flex-1 text-center py-4 text-xs font-semibold transition-all relative ${
-                activeTab === "login" 
-                  ? "text-stone-900 bg-white" 
-                  : "text-stone-400 hover:text-stone-600 hover:bg-stone-50/80"
-              }`}
-            >
-              Login
-              {activeTab === "login" && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#8b5e3c]" 
-                />
-              )}
-            </Link>
-            <Link 
-              href="/register" 
-              className={`flex-1 text-center py-4 text-xs font-semibold transition-all relative ${
-                activeTab === "register" 
-                  ? "text-stone-900 bg-white" 
-                  : "text-stone-400 hover:text-stone-600 hover:bg-stone-50/80"
-              }`}
-            >
-              Sign Up
-              {activeTab === "register" && (
-                <motion.div 
-                  layoutId="activeTabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#8b5e3c]" 
-                />
-              )}
-            </Link>
-          </div>
-
-          {/* Form Content Area */}
-          <div className="flex-1 p-6 sm:p-10 md:p-12 flex flex-col justify-center max-w-md mx-auto w-full">
-            {children(theme)}
-          </div>
-
-        </div>
-
+        </motion.div>
       </div>
+    </AuthThemeContext.Provider>
+  );
+}
+
+// ======================================================================
+// Auth Tabs
+// ======================================================================
+function AuthTabs({ activeTab }) {
+  return (
+    <div className="flex bg-transparent">
+      <Link
+        href="/login"
+        className={`flex-1 text-center py-4 text-xs font-semibold transition-all relative ${activeTab === "login"
+            ? "text-[#22c1a5]"
+            : "text-[#4a6560] hover:text-[#6b8e88]"
+          }`}
+      >
+        Login
+        {activeTab === "login" && (
+          <motion.div
+            layoutId="activeTabIndicator"
+            className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#22c1a5]"
+          />
+        )}
+      </Link>
+      <Link
+        href="/register"
+        className={`flex-1 text-center py-4 text-xs font-semibold transition-all relative ${activeTab === "register"
+            ? "text-[#22c1a5]"
+            : "text-[#4a6560] hover:text-[#6b8e88]"
+          }`}
+      >
+        Sign Up
+        {activeTab === "register" && (
+          <motion.div
+            layoutId="activeTabIndicator"
+            className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#22c1a5]"
+          />
+        )}
+      </Link>
     </div>
   );
 }
 
-export function AuthInput({ 
-  label, 
-  type = "text", 
-  icon, 
-  value, 
-  onChange, 
-  required = true,
-  delay = 0,
-  autoComplete,
-  t,
-  rightLabel,
-  ...props
+// ======================================================================
+// Auth Input (Dark themed)
+// ======================================================================
+export function AuthInput({
+  label, type = "text", icon, value, onChange, required = true,
+  delay = 0, autoComplete, t, rightLabel, ...props
 }) {
   const [focused, setFocused] = useState(false);
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: delay + 0.15, duration: 0.4 }}
-      className="mb-4"
+      className="mb-4 flex-shrink-0"
     >
-      <div className="flex justify-between items-center mb-1">
-        <label className="text-xs font-bold text-stone-700 tracking-wide font-sans">
-          {label}
-        </label>
+      <div className="flex justify-between items-center mb-1.5">
+        <label className="text-[11px] font-bold text-[#22c1a5] tracking-wider uppercase font-sans">{label}</label>
         {rightLabel}
       </div>
       <div
-        className={`flex items-center border rounded-xl bg-white overflow-hidden transition-all duration-200 ${
-          focused ? "border-[#8b5e3c] ring-2 ring-[#8b5e3c]/10" : "border-stone-200"
-        }`}
+        className={`flex items-center border rounded-xl overflow-hidden transition-all duration-200 ${focused
+            ? "border-[#22c1a5]/50 ring-1 ring-[#22c1a5]/15 bg-[#111f1c]"
+            : "border-[#1a2e2a] bg-[#0f1a17]"
+          }`}
       >
         {icon && (
-          <span className="pl-3.5 text-stone-400 text-sm flex items-center justify-center pointer-events-none">
+          <span className="pl-3.5 text-[#4a6560] text-sm flex items-center justify-center pointer-events-none">
             {icon}
           </span>
         )}
         <input
-          type={type}
-          value={value}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          required={required}
-          autoComplete={autoComplete}
-          className="w-full px-3 py-2.5 text-sm text-stone-850 outline-none bg-transparent placeholder-stone-400 font-medium"
+          type={type} value={value} onChange={onChange}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+          required={required} autoComplete={autoComplete}
+          className="w-full px-3 py-3 text-sm text-[#d0e8e2] outline-none bg-transparent placeholder-[#3a5550] font-medium"
           {...props}
         />
       </div>
