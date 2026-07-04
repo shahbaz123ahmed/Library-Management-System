@@ -19,7 +19,7 @@ function CoverImage({ src, alt, className = "" }) {
       </div>
     );
   }
-  return <img src={`${API_BASE}${src}`} alt={alt} className={`object-cover ${className}`} />;
+  return <img src={src.startsWith("http") ? src : `${API_BASE}${src}`} alt={alt} className={`object-cover ${className}`} />;
 }
 
 export default function BookDetailsPage() {

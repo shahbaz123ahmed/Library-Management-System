@@ -544,9 +544,13 @@ export default function BooksPage() {
                   <div className="h-45 w-35 rounded-[15px] bg-slate-100 overflow-hidden">
                     {book.coverImage ? (
                       <motion.img
-                        src={`${(
-                          process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
-                        ).replace("/api", "")}${book.coverImage}`}
+                        src={
+                          book.coverImage.startsWith("http")
+                            ? book.coverImage
+                            : `${(
+                                process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+                              ).replace("/api", "")}${book.coverImage}`
+                        }
                         alt={book.title}
                         className="h-full w-full rounded-[15px] object-cover"
                         variants={{

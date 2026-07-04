@@ -160,7 +160,11 @@ export default function MyShelfPage() {
                 <div className={`relative h-40 overflow-hidden ${isDark ? "bg-slate-900/60" : "bg-gradient-to-br from-slate-50 to-slate-100"}`}>
                   {book.coverImage ? (
                     <img
-                      src={`${API_BASE}${book.coverImage}`}
+                      src={
+                        book.coverImage.startsWith("http")
+                          ? book.coverImage
+                          : `${API_BASE}${book.coverImage}`
+                      }
                       alt={book.title}
                       className="w-full h-full object-cover"
                     />

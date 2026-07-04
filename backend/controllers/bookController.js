@@ -14,7 +14,7 @@ const isLibrarian = (user) => user.role === "librarian";
 const createBook = async (req, res, next) => {
   try {
     const { title, author, category, isbn, quantity, description } = req.body;
-    const coverImage = req.file ? `/uploads/${req.file.filename}` : "";
+    const coverImage = req.file ? req.file.path : "";
     const user = req.user;
 
     // Determine if book is global (admin) or workspace-specific (librarian)
@@ -367,7 +367,7 @@ const updateBook = async (req, res, next) => {
     }
 
     if (req.file) {
-      book.coverImage = `/uploads/${req.file.filename}`;
+      book.coverImage = req.file.path;
     }
 
     let newWorkspaceId = null;
