@@ -7,12 +7,14 @@ import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 export default function AppLayout({ title, children }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const { user } = useAuth();
   const router = useRouter();
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   const canManage = user?.role === "admin" || user?.role === "librarian";
 
@@ -24,12 +26,35 @@ export default function AppLayout({ title, children }) {
     }
   };
 
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    const maxScroll = scrollHeight - clientHeight;
+    if (maxScroll <= 0) {
+      setScrollProgress(0);
+    } else {
+      setScrollProgress((scrollTop / maxScroll) * 100);
+    }
+  };
+
   return (
     <div className={`flex h-screen overflow-hidden md:pl-64 transition-colors duration-300 ${isDark ? "bg-slate-900" : ""}`}>
       <Sidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0 w-full relative">
+        {/* Scroll Progress Bar */}
+        <div className={`absolute top-0 left-0 right-0 h-1 z-50 ${isDark ? "bg-slate-800" : "bg-slate-200"}`}>
+          <div 
+            className="h-full bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 transition-all duration-150 ease-out"
+            style={{ width: `${scrollProgress}%` }}
+          />
+        </div>
+
         <Topbar title={title} />
-        <main className={`flex-1 overflow-y-auto px-6 pb-16 pt-6 md:px-10 transition-colors duration-300 ${isDark ? "bg-slate-900" : ""}`}>{children}</main>
+        <main 
+          onScroll={handleScroll}
+          className={`flex-1 overflow-y-auto px-4 pb-16 pt-6 md:px-10 transition-colors duration-300 ${isDark ? "bg-slate-900" : ""}`}
+        >
+          {children}
+        </main>
       </div>
       <ChatWidget />
       

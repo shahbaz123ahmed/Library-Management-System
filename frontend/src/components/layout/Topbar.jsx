@@ -242,18 +242,6 @@ export default function Topbar({ title }) {
 
   return (
     <div className="sticky top-0 z-40">
-      {/* Animated gradient line */}
-      <motion.div
-        animate={{
-          background: [
-            "linear-gradient(90deg, #8b5cf6, #3b82f6, #06b6d4)",
-            "linear-gradient(90deg, #3b82f6, #06b6d4, #8b5cf6)",
-            "linear-gradient(90deg, #06b6d4, #8b5cf6, #3b82f6)",
-          ],
-        }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-        className="h-0.75 w-full"
-      />
       <header className={`flex items-center justify-between border-b px-4 py-3 backdrop-blur transition-colors duration-300 md:px-10 md:py-4 ${isDark
           ? "border-slate-800/50 bg-slate-950/80 text-white"
           : "border-slate-200 bg-white/70 text-slate-900"

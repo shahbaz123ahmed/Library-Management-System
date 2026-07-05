@@ -42,6 +42,7 @@ export default function BooksPage() {
   const [authorLookupLoading, setAuthorLookupLoading] = useState(false);
   const [isFetchingBook, setIsFetchingBook] = useState(false);
   const [librarians, setLibrarians] = useState([]);
+  const [wishlistIds, setWishlistIds] = useState(new Set());
 
   useEffect(() => {
     if (user?.role === "admin") {
@@ -109,7 +110,20 @@ export default function BooksPage() {
         setCategories([]);
       }
     };
+    
+    const loadWishlist = async () => {
+      if (user.role === "admin") return;
+      try {
+        const { data } = await api.get("/wishlist");
+        const ids = (data.wishlist || []).map(b => b._id || b);
+        setWishlistIds(new Set(ids));
+      } catch (err) {
+        console.error("Failed to fetch wishlist", err);
+      }
+    };
+    
     loadCategories();
+    loadWishlist();
   }, [user]);
 
   useEffect(() => {
@@ -266,6 +280,25 @@ export default function BooksPage() {
       })),
       "books.csv"
     );
+  };
+
+  const handleToggleShelf = async (book) => {
+    try {
+      const { data } = await api.post(`/wishlist/${book._id}`);
+      
+      setWishlistIds(prev => {
+        const next = new Set(prev);
+        if (data.added) next.add(book._id);
+        else next.delete(book._id);
+        return next;
+      });
+
+      toast(data.added ? "❤️ Added to My Shelf!" : "💔 Removed from My Shelf", {
+        style: { fontWeight: 600 },
+      });
+    } catch (error) {
+      toast.error("Failed to update shelf");
+    }
   };
 
   const handleGenerateAuthor = async () => {
@@ -546,18 +579,19 @@ export default function BooksPage() {
             transition={{ duration: 0.5, delay: index * 0.05 }}
             style={{ animationDelay: `${index * 60}ms` }}
             whileHover="hover"
-            className="group relative w-full max-w-85 justify-self-center rounded-2xl bg-linear-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
+            className="group cursor-pointer relative w-full max-w-85 justify-self-center rounded-2xl bg-gradient-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
+            onClick={() => router.push(`/books/${book._id}`)}
           >
-            <div className="rounded-2xl bg-white/80 p-4 backdrop-blur-md text-red-600 flex-1 flex flex-col justify-between">
-              <div className="flex items-start gap-4">
+            <div className={`rounded-2xl p-4 backdrop-blur-md flex-1 flex flex-col relative overflow-hidden ${
+              isDark ? "bg-slate-900/90" : "bg-white/90"
+            }`}>
+              <div className="flex items-stretch gap-4 h-full">
                 <motion.div
-                  className="flex w-35 shrink-0 flex-col items-center gap-2"
-                  variants={{
-                    hover: { scale: 1.05 }
-                  }}
+                  className="flex w-32 shrink-0 flex-col items-center gap-2"
+                  variants={{ hover: { scale: 1.05 } }}
                   transition={{ duration: 0.3 }}
                 >
-                  <div className="h-45 w-35 rounded-[15px] bg-slate-100 overflow-hidden">
+                  <div className="h-44 w-full rounded-[15px] bg-slate-100 overflow-hidden relative shadow-sm">
                     {book.coverImage ? (
                       <motion.img
                         src={
@@ -569,30 +603,31 @@ export default function BooksPage() {
                         }
                         alt={book.title}
                         className="h-full w-full rounded-[15px] object-cover"
-                        variants={{
-                          hover: { scale: 1.15 }
-                        }}
+                        variants={{ hover: { scale: 1.15 } }}
                         transition={{ duration: 0.3 }}
                       />
                     ) : (
                       <motion.div
-                        className="flex h-full w-full items-center justify-center rounded-[15px] text-xs text-slate-400"
-                        variants={{
-                          hover: { scale: 1.15 }
-                        }}
+                        className="flex h-full w-full items-center justify-center rounded-[15px] text-4xl text-slate-400"
+                        variants={{ hover: { scale: 1.15 } }}
                         transition={{ duration: 0.3 }}
                       >
-                        No cover
+                        📚
                       </motion.div>
                     )}
+                    {/* Availability badge */}
+                    <div className={`absolute bottom-2 left-2 right-2 text-center rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-md ${
+                      book.available > 0 ? "bg-emerald-500/90 text-white backdrop-blur-sm" : "bg-red-500/90 text-white backdrop-blur-sm"
+                    }`}>
+                      {book.available > 0 ? `${book.available} avail` : "Unavail"}
+                    </div>
                   </div>
-                  <p className="text-xs font-semibold text-slate-500">{book.category}</p>
 
                   {book.isGlobal && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600"
+                      className="mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600 text-center leading-tight"
                     >
                       📚 Admin Catalog
                     </motion.span>
@@ -601,82 +636,120 @@ export default function BooksPage() {
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="mt-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700"
+                      className="mt-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 text-center leading-tight"
                     >
                       ✏️ Your Workspace
                     </motion.span>
                   )}
                 </motion.div>
-                <div className="flex-1 text-left">
-                  <h3 className="text-lg font-semibold text-slate-900">{book.title}</h3>
-                  <p className="text-sm text-slate-500">{book.author}</p>
-                  <p className="mt-2 text-sm text-slate-600">ISBN {book.isbn}</p>
-                  <p className="text-sm text-slate-600">
-                    Available: {book.available} · Total: {book.quantity}
-                  </p>
-                  <div className="mt-4 flex flex-col gap-3">
-                    <motion.button
-                      whileHover={{ scale: 1.05, backgroundColor: "#0f766e" }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => router.push(`/books/${book._id}`)}
-                      className="w-fit rounded-full bg-teal-600 px-4 py-2 text-xs font-semibold text-white transition"
-                    >
-                      Details
-                    </motion.button>
+
+                <div className="flex-1 text-left flex flex-col pt-1 h-full min-h-[11rem]">
+                  <h3 className={`text-lg font-bold leading-tight line-clamp-2 ${isDark ? "text-white" : "text-slate-900"}`}>{book.title}</h3>
+                  <p className={`text-sm mt-1 mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{book.author}</p>
+                  
+                  {/* Details Area */}
+                  <div className="flex flex-col gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                        🏷️ {book.category || "Uncategorized"}
+                      </span>
+                      <span className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider ${isDark ? "bg-slate-800/60 text-slate-400" : "bg-slate-50 text-slate-500"}`}>
+                        # {book.isbn}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className={`w-2 h-2 rounded-full ${book.available > 0 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"}`}></div>
+                      <span className={`text-[11px] font-semibold ${book.available > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                        {book.available > 0 ? `${book.available} Avail / ${book.quantity} Total` : "Currently Unavailable"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={(e) => { e.stopPropagation(); handleToggleShelf(book); }}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-all duration-300 ${isDark ? "bg-slate-800" : "bg-white"}`}
+                        title={wishlistIds.has(book._id) ? "Remove from My Shelf" : "Add to My Shelf"}
+                      >
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={wishlistIds.has(book._id) ? "filled" : "empty"}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.5, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="text-[17px] leading-none"
+                          >
+                            {wishlistIds.has(book._id) ? "❤️" : "🤍"}
+                          </motion.span>
+                        </AnimatePresence>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.03, backgroundColor: "#0f766e" }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(e) => { e.stopPropagation(); router.push(`/books/${book._id}`); }}
+                        className="flex-1 rounded-full bg-teal-600 px-4 py-2.5 text-xs font-semibold text-white transition shadow-sm"
+                      >
+                        Details
+                      </motion.button>
+                    </div>
 
                     {user?.role === "librarian" && book.isGlobal === true && (
                       <motion.button
-                        whileHover={{ scale: 1.05, backgroundColor: "#2563eb" }}
+                        whileHover={{ scale: 1.03, backgroundColor: "#2563eb" }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => handleCopyToWorkspace(book)}
-                        className="w-fit rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition"
+                        onClick={(e) => { e.stopPropagation(); handleCopyToWorkspace(book); }}
+                        className="w-full rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition shadow-sm"
                       >
                         📋 Copy to Workspace
                       </motion.button>
                     )}
 
                     {user?.role === "admin" && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => openEdit(book)}
-                          className="rounded-full border border-sky-200 bg-sky-100 px-4 py-2 text-xs font-semibold text-sky-700 transition"
+                          onClick={(e) => { e.stopPropagation(); openEdit(book); }}
+                          className={`flex-1 rounded-full border px-4 py-2 text-xs font-semibold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
                         >
                           Edit
                         </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.05, backgroundColor: "#ea580c" }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={() => handleDelete(book)}
-                          className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(book); }}
+                          className="flex-1 rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
                         >
                           Delete
                         </motion.button>
                       </div>
                     )}
 
-                    {user?.role === "librarian" &&
-                      (book.isGlobal === false || book.workspaceId === user?._id) && (
-                        <div className="flex items-center gap-3">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => openEdit(book)}
-                            className="rounded-full border border-sky-200 bg-sky-100 px-4 py-2 text-xs font-semibold text-sky-700 transition"
-                          >
-                            Edit
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05, backgroundColor: "#ea580c" }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleDelete(book)}
-                            className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
-                          >
-                            Delete
-                          </motion.button>
-                        </div>
-                      )}
+                    {user?.role === "librarian" && (book.isGlobal === false || book.workspaceId === user?._id) && (
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => { e.stopPropagation(); openEdit(book); }}
+                          className={`flex-1 rounded-full border px-4 py-2 text-xs font-semibold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
+                        >
+                          Edit
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05, backgroundColor: "#ea580c" }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(book); }}
+                          className="flex-1 rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
+                        >
+                          Delete
+                        </motion.button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

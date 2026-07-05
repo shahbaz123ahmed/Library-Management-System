@@ -155,11 +155,11 @@ export default function ActivityLogsPage() {
 
   return (
     <AppLayout>
-      <div className={`p-6 min-h-screen ${isDark ? "text-slate-100" : "text-slate-800"}`}>
+      <div className={`min-h-screen ${isDark ? "text-slate-100" : "text-slate-800"}`}>
         {/* Header section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Cinzel', serif" }}>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight" style={{ fontFamily: "'Cinzel', serif" }}>
               🏛️ Centralized System Audit Logs
             </h1>
             <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>

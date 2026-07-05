@@ -144,74 +144,100 @@ export default function MyShelfPage() {
               <motion.div
                 key={book._id}
                 layout
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0, y: 50, rotateX: -15 }}
+                animate={{ opacity: 1, y: 0, rotateX: 0 }}
                 exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.2 } }}
-                transition={{ delay: index * 0.05, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={{ y: -4, boxShadow: isDark ? "0 12px 40px rgba(0,0,0,0.4)" : "0 12px 40px rgba(15,23,42,0.12)" }}
+                transition={{ duration: 0.5, delay: index * 0.05 }}
+                whileHover="hover"
                 onClick={() => router.push(`/books/${book._id}`)}
-                className={`relative cursor-pointer rounded-2xl border overflow-hidden transition-colors duration-300 ${
-                  isDark
-                    ? "bg-slate-800/60 border-slate-700/50"
-                    : "bg-white border-slate-200/80 shadow-sm"
-                }`}
+                className="group cursor-pointer relative w-full justify-self-center rounded-2xl bg-gradient-to-r from-blue-500 via-teal-500 to-green-500 p-0.5 transition-all duration-300 preserve-3d flex flex-col"
               >
-                {/* Cover */}
-                <div className={`relative h-40 overflow-hidden ${isDark ? "bg-slate-900/60" : "bg-gradient-to-br from-slate-50 to-slate-100"}`}>
-                  {book.coverImage ? (
-                    <img
-                      src={
-                        book.coverImage.startsWith("http")
-                          ? book.coverImage
-                          : `${API_BASE}${book.coverImage}`
-                      }
-                      alt={book.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl">📚</div>
-                  )}
+                <div className={`rounded-2xl p-4 backdrop-blur-md flex-1 flex flex-col relative overflow-hidden ${
+                  isDark ? "bg-slate-900/90" : "bg-white/90"
+                }`}>
                   {/* Remove heart button */}
                   <motion.button
                     whileHover={{ scale: 1.15 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={(e) => handleRemove(book._id, e)}
                     disabled={removingId === book._id}
-                    className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md text-rose-500 backdrop-blur-sm"
+                    className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md text-rose-500 backdrop-blur-sm"
                     title="Remove from shelf"
                   >
                     <span className="text-sm">{removingId === book._id ? "…" : "❤️"}</span>
                   </motion.button>
-                  {/* Availability badge */}
-                  <div className={`absolute bottom-3 left-3 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    book.available > 0 ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
-                  }`}>
-                    {book.available > 0 ? `${book.available} available` : "Unavailable"}
-                  </div>
-                </div>
 
-                {/* Info */}
-                <div className="p-4">
-                  <p className={`text-sm font-semibold line-clamp-1 ${isDark ? "text-white" : "text-slate-900"}`}>{book.title}</p>
-                  <p className={`text-xs mt-0.5 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{book.author}</p>
-                  <p className={`text-xs mt-1 ${isDark ? "text-slate-500" : "text-slate-400"}`}>{book.category}</p>
-
-                  {/* Borrow button */}
-                  {user?.role === "student" && (
-                    <motion.button
-                      whileHover={book.available > 0 ? { scale: 1.03 } : {}}
-                      whileTap={book.available > 0 ? { scale: 0.97 } : {}}
-                      onClick={(e) => handleBorrow(book._id, e)}
-                      disabled={book.available <= 0}
-                      className={`mt-3 w-full rounded-full py-2 text-xs font-semibold transition-all ${
-                        book.available > 0
-                          ? "bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-sm"
-                          : isDark ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      }`}
+                  <div className="flex items-stretch gap-4 h-full">
+                    <motion.div
+                      className="flex w-28 shrink-0 flex-col items-center gap-2"
+                      variants={{ hover: { scale: 1.05 } }}
+                      transition={{ duration: 0.3 }}
                     >
-                      {book.available > 0 ? "📖 Request to Borrow" : "📭 Not Available"}
-                    </motion.button>
-                  )}
+                      <div className="h-40 w-full rounded-[12px] bg-slate-100 overflow-hidden relative shadow-md">
+                        {book.coverImage ? (
+                          <motion.img
+                            src={
+                              book.coverImage.startsWith("http")
+                                ? book.coverImage
+                                : `${API_BASE}${book.coverImage}`
+                            }
+                            alt={book.title}
+                            className="h-full w-full rounded-[12px] object-cover"
+                            variants={{ hover: { scale: 1.15 } }}
+                            transition={{ duration: 0.3 }}
+                          />
+                        ) : (
+                          <motion.div
+                            className="flex h-full w-full items-center justify-center rounded-[12px] text-4xl text-slate-400"
+                            variants={{ hover: { scale: 1.15 } }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            📚
+                          </motion.div>
+                        )}
+                      </div>
+                    </motion.div>
+
+                    <div className="flex-1 text-left flex flex-col pt-1 h-full min-h-[11rem]">
+                      <h3 className={`text-lg font-bold leading-tight line-clamp-2 ${isDark ? "text-white" : "text-slate-900"}`}>{book.title}</h3>
+                      <p className={`text-sm mt-1 mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{book.author}</p>
+                      
+                      {/* Details Area */}
+                      <div className="flex flex-col gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}>
+                            🏷️ {book.category || "Uncategorized"}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className={`w-2 h-2 rounded-full ${book.available > 0 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"}`}></div>
+                          <span className={`text-[11px] font-semibold ${book.available > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                            {book.available > 0 ? `${book.available} Copies Available` : "Currently Unavailable"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Borrow button */}
+                      {user?.role === "student" && (
+                        <div className="mt-auto flex flex-col gap-2">
+                          <motion.button
+                            whileHover={book.available > 0 ? { scale: 1.03, backgroundColor: "#0f766e" } : {}}
+                            whileTap={book.available > 0 ? { scale: 0.95 } : {}}
+                            onClick={(e) => handleBorrow(book._id, e)}
+                            disabled={book.available <= 0}
+                            className={`w-full rounded-full py-2.5 text-xs font-semibold transition-all shadow-sm ${
+                              book.available > 0
+                                ? "bg-teal-600 text-white"
+                                : isDark ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                            }`}
+                          >
+                            {book.available > 0 ? "📖 Request to Borrow" : "📭 Not Available"}
+                          </motion.button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ))}
