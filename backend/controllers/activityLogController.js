@@ -10,6 +10,7 @@ const listActivityLogs = async (req, res, next) => {
       userRole,
       action,
       activityType,
+      status,
       startDate,
       endDate,
       format // "csv", "json"
@@ -30,6 +31,7 @@ const listActivityLogs = async (req, res, next) => {
     if (userRole) query.userRole = userRole;
     if (action) query.action = action;
     if (activityType) query.activityType = activityType;
+    if (status) query.status = status;
 
     if (startDate || endDate) {
       query.createdAt = {};
