@@ -85,8 +85,8 @@ export default function AdminCatalogPage() {
     if (!isLibrarian) return;
 
     try {
-      const response = await api.post(`/books/${book._id}/request-workspace`);
-      toast.success(response.data.message || `Request to copy "${book.title}" submitted to Admin!`);
+      const response = await api.post(`/books/${book._id}/copy-to-workspace`);
+      toast.success(response.data.message || `"${book.title}" copied to your workspace. You can now edit it.`);
       fetchBooks();
     } catch (error) {
       const message = error.response?.data?.message || "Failed to submit request";

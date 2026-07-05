@@ -301,6 +301,20 @@ export default function BooksPage() {
     }
   };
 
+  const handleQuickBorrow = async (e, bookId) => {
+    e.stopPropagation();
+    try {
+      await api.post("/transactions/request", { bookId });
+      toast.success("📬 Borrow request sent! A librarian will approve it soon.");
+    } catch (err) {
+      if (err.response?.data?.message?.toLowerCase().includes("already")) {
+         toast.error("You have already requested or borrowed this book!");
+      } else {
+         toast.error(err.response?.data?.message || "Failed to borrow book");
+      }
+    }
+  };
+
   const handleGenerateAuthor = async () => {
     const title = form.title?.trim();
     if (!title) {
@@ -615,28 +629,22 @@ export default function BooksPage() {
                         📚
                       </motion.div>
                     )}
-                    {/* Availability badge */}
-                    <div className={`absolute bottom-2 left-2 right-2 text-center rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-md ${
-                      book.available > 0 ? "bg-emerald-500/90 text-white backdrop-blur-sm" : "bg-red-500/90 text-white backdrop-blur-sm"
-                    }`}>
-                      {book.available > 0 ? `${book.available} avail` : "Unavail"}
-                    </div>
                   </div>
 
-                  {book.isGlobal && (
+                  {user?.role === "admin" && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600 text-center leading-tight"
+                      className={`mt-2 rounded-full px-3 py-1 text-[11px] font-bold text-center shadow-sm ${isDark ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-600"}`}
                     >
                       📚 Admin Catalog
                     </motion.span>
                   )}
-                  {!book.isGlobal && book.workspaceId === user?._id && (
+                  {user?.role === "librarian" && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="mt-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 text-center leading-tight"
+                      className={`mt-2 rounded-full px-3 py-1 text-[11px] font-bold text-center shadow-sm ${isDark ? "bg-emerald-900/30 text-emerald-400" : "bg-emerald-100 text-emerald-700"}`}
                     >
                       ✏️ Your Workspace
                     </motion.span>
@@ -667,36 +675,21 @@ export default function BooksPage() {
                   </div>
                   
                   <div className="mt-auto flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => { e.stopPropagation(); handleToggleShelf(book); }}
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-all duration-300 ${isDark ? "bg-slate-800" : "bg-white"}`}
-                        title={wishlistIds.has(book._id) ? "Remove from My Shelf" : "Add to My Shelf"}
-                      >
-                        <AnimatePresence mode="wait">
-                          <motion.span
-                            key={wishlistIds.has(book._id) ? "filled" : "empty"}
-                            initial={{ scale: 0.5, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.5, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="text-[17px] leading-none"
-                          >
-                            {wishlistIds.has(book._id) ? "❤️" : "🤍"}
-                          </motion.span>
-                        </AnimatePresence>
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.03, backgroundColor: "#0f766e" }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={(e) => { e.stopPropagation(); router.push(`/books/${book._id}`); }}
-                        className="flex-1 rounded-full bg-teal-600 px-4 py-2.5 text-xs font-semibold text-white transition shadow-sm"
-                      >
-                        Details
-                      </motion.button>
-                    </div>
+                    
+
+                    {/* ADMIN / LIBRARIAN VIEW - LEFT ALIGNED */}
+                    {user?.role !== "student" && (
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.03, backgroundColor: "#0f766e" }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={(e) => { e.stopPropagation(); router.push(`/books/${book._id}`); }}
+                          className="w-fit rounded-full bg-teal-600 px-5 py-1.5 text-[11px] font-semibold text-white transition shadow-sm"
+                        >
+                          Details
+                        </motion.button>
+                      </div>
+                    )}
 
                     {user?.role === "librarian" && book.isGlobal === true && (
                       <motion.button
@@ -710,12 +703,12 @@ export default function BooksPage() {
                     )}
 
                     {user?.role === "admin" && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-1">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => { e.stopPropagation(); openEdit(book); }}
-                          className={`flex-1 rounded-full border px-4 py-2 text-xs font-semibold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
+                          className={`rounded-full border px-5 py-1.5 text-[11px] font-bold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
                         >
                           Edit
                         </motion.button>
@@ -723,7 +716,7 @@ export default function BooksPage() {
                           whileHover={{ scale: 1.05, backgroundColor: "#ea580c" }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => { e.stopPropagation(); handleDelete(book); }}
-                          className="flex-1 rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
+                          className="rounded-full bg-orange-500 px-5 py-1.5 text-[11px] font-bold text-white transition shadow-sm"
                         >
                           Delete
                         </motion.button>
@@ -731,12 +724,12 @@ export default function BooksPage() {
                     )}
 
                     {user?.role === "librarian" && (book.isGlobal === false || book.workspaceId === user?._id) && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-1">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => { e.stopPropagation(); openEdit(book); }}
-                          className={`flex-1 rounded-full border px-4 py-2 text-xs font-semibold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
+                          className={`rounded-full border px-5 py-1.5 text-[11px] font-bold transition ${isDark ? "bg-sky-900/30 border-sky-800 text-sky-400" : "border-sky-200 bg-sky-100 text-sky-700"}`}
                         >
                           Edit
                         </motion.button>
@@ -744,7 +737,7 @@ export default function BooksPage() {
                           whileHover={{ scale: 1.05, backgroundColor: "#ea580c" }}
                           whileTap={{ scale: 0.95 }}
                           onClick={(e) => { e.stopPropagation(); handleDelete(book); }}
-                          className="flex-1 rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition"
+                          className="rounded-full bg-orange-500 px-5 py-1.5 text-[11px] font-bold text-white transition shadow-sm"
                         >
                           Delete
                         </motion.button>
@@ -753,6 +746,53 @@ export default function BooksPage() {
                   </div>
                 </div>
               </div>
+
+              {/* STUDENT VIEW - ABSOLUTE BOTTOM CENTER ACROSS FULL CARD */}
+              {user?.role === "student" && (
+                <div className="mt-5 w-full flex items-center justify-center gap-4 border-t pt-4 border-slate-200/50 dark:border-slate-700/50">
+                  {/* Details (Left) */}
+                  <motion.button
+                    whileHover={{ scale: 1.05, backgroundColor: "#0f766e" }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/books/${book._id}`); }}
+                    className="w-fit rounded-full bg-teal-600 px-6 py-2.5 text-xs font-bold text-white transition shadow-md"
+                  >
+                    Details
+                  </motion.button>
+
+                  {/* Heart (Middle) */}
+                  <motion.button
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); handleToggleShelf(book); }}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-md text-slate-400 hover:text-rose-500 transition-all duration-300 ${isDark ? "bg-slate-800" : "bg-white"}`}
+                    title={wishlistIds.has(book._id) ? "Remove from My Shelf" : "Add to My Shelf"}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={wishlistIds.has(book._id) ? "filled" : "empty"}
+                        initial={{ scale: 0.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="text-[19px] leading-none"
+                      >
+                        {wishlistIds.has(book._id) ? "❤️" : "🤍"}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.button>
+
+                  {/* Borrow (Right) */}
+                  <motion.button
+                    whileHover={{ scale: 1.05, backgroundColor: "#0f766e" }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={(e) => handleQuickBorrow(e, book._id)}
+                    className="w-fit rounded-full bg-teal-600 px-6 py-2.5 text-xs font-bold text-white transition shadow-md"
+                  >
+                    Borrow
+                  </motion.button>
+                </div>
+              )}
             </div>
           </motion.div>
         ))}

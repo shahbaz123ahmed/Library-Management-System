@@ -292,7 +292,7 @@ export default function Topbar({ title }) {
         {/* Right: Actions */}
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
           {/* ── Notification Bell (all users) ── */}
-          {user && (
+          {user && user.role !== "admin" && (
             <div className="relative" ref={notifRef}>
               <motion.button
                 whileHover={{ scale: 1.1 }}
