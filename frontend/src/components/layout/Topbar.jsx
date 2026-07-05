@@ -216,6 +216,7 @@ export default function Topbar({ title }) {
     { label: "Transactions", href: "/transactions", roles: ["admin", "librarian"] },
     { label: "Admin Catalog", href: "/admin-catalog", roles: ["librarian"] },
     { label: "Users", href: "/users", roles: ["admin"] },
+    { label: "Activity Logs", href: "/users/activity-logs", roles: ["admin"] },
   ];
 
   const variantIndex = currentIndex % animationVariants.length;
