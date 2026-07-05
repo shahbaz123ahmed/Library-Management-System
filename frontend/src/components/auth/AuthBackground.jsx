@@ -1,11 +1,47 @@
 "use client";
 
 import { useEffect, useState, createContext, useContext, useRef } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from "framer-motion";
 import Link from "next/link";
 
 const AuthThemeContext = createContext(null);
 export const useAuthTheme = () => useContext(AuthThemeContext);
+
+let globalAudioCtx = null;
+
+const playClickSound = () => {
+  try {
+    if (!globalAudioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      globalAudioCtx = new AudioContext();
+    }
+    if (globalAudioCtx.state === 'suspended') {
+      globalAudioCtx.resume();
+    }
+
+    const osc = globalAudioCtx.createOscillator();
+    const gain = globalAudioCtx.createGain();
+
+    // A harsh, dry square wave for a physical plastic switch snap
+    osc.type = "square";
+
+    // High frequency plastic impact that drops instantly
+    osc.frequency.setValueAtTime(1500, globalAudioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(150, globalAudioCtx.currentTime + 0.02);
+
+    // Incredibly fast, dry envelope to remove any ring or tone
+    gain.gain.setValueAtTime(0.8, globalAudioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, globalAudioCtx.currentTime + 0.03);
+
+    osc.connect(gain);
+    gain.connect(globalAudioCtx.destination);
+
+    osc.start(globalAudioCtx.currentTime);
+    osc.stop(globalAudioCtx.currentTime + 0.035);
+  } catch (e) {
+    // Fail silently if audio is not supported
+  }
+};
 
 export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) {
   const [particles, setParticles] = useState([]);
@@ -55,34 +91,7 @@ export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) 
   const dragY = useMotionValue(0);
   const chainY2 = useTransform(dragY, (y) => 175 + y);
 
-  const playClickSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioContext();
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      // A harsh, dry square wave for a physical plastic switch snap
-      osc.type = "square";
-
-      // High frequency plastic impact that drops instantly
-      osc.frequency.setValueAtTime(1500, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.02);
-
-      // Incredibly fast, dry envelope to remove any ring or tone
-      gain.gain.setValueAtTime(0.8, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.03);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.035);
-    } catch (e) {
-      // Fail silently if audio is not supported
-    }
-  };
+  const swingControls = useAnimation();
 
   const theme = {
     text: "#e2f0ed",
@@ -110,6 +119,15 @@ export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) 
     setParticles(generateParticles());
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      swingControls.start({
+        rotate: [0, 4, -3, 2.5, -2, 1.5, -1, 0.5, 0],
+        transition: { duration: 3.5, ease: "easeInOut", delay: 0.3 }
+      });
+    }
+  }, [mounted, swingControls]);
 
   if (!mounted) {
     return (
@@ -233,68 +251,90 @@ export function AuthShell({ children, isDark, setIsDark, activeTab = "login" }) 
                     strokeWidth="0.5"
                   />
                   <ellipse cx="120" cy="362" rx="43" ry="6" fill="#0d0d0d" />
-
-                  {/* === Dynamic Stretchable Pull Chain === */}
-                  {/* Thin solid string */}
-                  <motion.line
-                    x1="190" y1="80" x2="190"
-                    style={{ y2: chainY2 }}
-                    stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f"}
-                    strokeWidth="0.5"
-                    animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f" }}
-                    transition={{ duration: 0.5 }}
-                  />
-                  {/* Dotted beads over the string */}
-                  <motion.line
-                    x1="190" y1="82" x2="190"
-                    style={{ y2: chainY2 }}
-                    stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a"}
-                    strokeWidth="1.5"
-                    strokeDasharray="0 5.5"
-                    strokeLinecap="round"
-                    animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a" }}
-                    transition={{ duration: 0.5 }}
-                  />
                 </svg>
 
-                {/* ====== PULL CHAIN KNOB (Draggable) ====== */}
+                {/* ====== SWINGING PULL CHAIN AND KNOB ====== */}
                 <motion.div
-                  drag="y"
-                  dragConstraints={{ top: 0, bottom: 45 }}
-                  dragElastic={0.4}
-                  dragSnapToOrigin={true}
-                  onDragEnd={(e, info) => {
-                    if (info.offset.y > 15) {
-                      setLampOn((prev) => !prev);
-                      playClickSound();
-                    }
-                  }}
-                  animate={{
-                    scale: lampOn ? 1 : [1, 1.05, 1]
-                  }}
-                  transition={lampOn ? { duration: 0.3 } : { duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ cursor: "grabbing" }}
-                  className="absolute z-30 w-6 h-10 rounded-[12px] cursor-grab focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffdb70]/50"
-                  style={{
-                    y: dragY,
-                    top: "175px",
-                    left: "178px", // 190px (chain x) - 12px (half width)
-                    background: lampOn
-                      ? "rgba(255, 219, 112, 0.05)"
-                      : "linear-gradient(180deg, #1a3530, #0f1a17)",
-                    border: `1.5px solid ${lampOn ? "rgba(255, 219, 112, 0.05)" : "#1a3530"}`,
-                    boxShadow: lampOn ? "none" : "none",
-                  }}
-                  aria-label="Drag the chain down to toggle lamp"
-                />
+                  className="absolute inset-0 pointer-events-none z-30"
+                  style={{ transformOrigin: "190px 80px" }}
+                  animate={swingControls}
+                >
+                  <svg width="240" height="420" viewBox="0 0 240 420" fill="none" className="absolute inset-0 overflow-visible pointer-events-none">
+                    {/* === Dynamic Stretchable Pull Chain === */}
+                    {/* Thin solid string */}
+                    <motion.line
+                      x1="190" y1="80" x2="190"
+                      style={{ y2: chainY2 }}
+                      stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f"}
+                      strokeWidth="0.5"
+                      animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#1f1f1f" }}
+                      transition={{ duration: 0.5 }}
+                    />
+                    {/* Dotted beads over the string */}
+                    <motion.line
+                      x1="190" y1="82" x2="190"
+                      style={{ y2: chainY2 }}
+                      stroke={lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a"}
+                      strokeWidth="1.5"
+                      strokeDasharray="0 5.5"
+                      strokeLinecap="round"
+                      animate={{ stroke: lampOn ? "rgba(255, 219, 112, 0.05)" : "#3a3a3a" }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </svg>
+
+                  {/* ====== PULL CHAIN KNOB (Draggable) ====== */}
+                  <motion.div
+                    drag="y"
+                    dragConstraints={{ top: 0, bottom: 45 }}
+                    dragElastic={0.4}
+                    dragSnapToOrigin={true}
+                    onPointerDown={() => {
+                      if (!globalAudioCtx) {
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        globalAudioCtx = new AudioContext();
+                      }
+                      if (globalAudioCtx.state === 'suspended') {
+                        globalAudioCtx.resume();
+                      }
+                    }}
+                    onDragEnd={(e, info) => {
+                      if (info.offset.y > 15) {
+                        setLampOn((prev) => !prev);
+                        playClickSound();
+                      }
+                      swingControls.start({
+                        rotate: [0, 4, -3, 2.5, -2, 1.5, -1, 0.5, 0],
+                        transition: { duration: 3.5, ease: "easeInOut" }
+                      });
+                    }}
+                    animate={{
+                      scale: lampOn ? 1 : [1, 1.05, 1]
+                    }}
+                    transition={lampOn ? { duration: 0.3 } : { duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ cursor: "grabbing" }}
+                    className="absolute w-6 h-10 rounded-[12px] cursor-grab focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ffdb70]/50 pointer-events-auto"
+                    style={{
+                      y: dragY,
+                      top: "175px",
+                      left: "178px", // 190px (chain x) - 12px (half width)
+                      background: lampOn
+                        ? "rgba(255, 219, 112, 0.05)"
+                        : "linear-gradient(180deg, #1a3530, #0f1a17)",
+                      border: `1.5px solid ${lampOn ? "rgba(255, 219, 112, 0.05)" : "#1a3530"}`,
+                      boxShadow: lampOn ? "none" : "none",
+                    }}
+                    aria-label="Drag the chain down to toggle lamp"
+                  />
+                </motion.div>
               </div>
             </div>
 
             {/* ====== BRANDING BELOW LAMP ====== */}
             <motion.div
-              animate={{ opacity: lampOn ? 1 : 0.4 }}
-              transition={{ duration: 0.8 }}
+              animate={lampOn ? { opacity: 1, filter: "drop-shadow(0px 0px 8px rgba(34,193,165,0.4))" } : { opacity: [0.3, 0.8, 0.3], filter: ["drop-shadow(0px 0px 2px rgba(34,193,165,0))", "drop-shadow(0px 0px 10px rgba(34,193,165,0.6))", "drop-shadow(0px 0px 2px rgba(34,193,165,0))"] }}
+              transition={lampOn ? { duration: 0.8 } : { duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
               className="relative z-10 flex flex-col items-center mt-6 w-full"
             >
               <h2 className="text-[#22c1a5] text-[12px] tracking-[0.45em] font-bold uppercase font-sans text-center">
