@@ -9,6 +9,12 @@ const getStats = async (req, res, next) => {
     
     // ADMIN STATS
     if (user.role === "admin") {
+      const [totalBooksList, issuedBooksList, availableBooksList, registeredUsersList] = await Promise.all([
+        Book.find().select("title author coverImage").limit(50),
+        Transaction.find({ status: "issued" }).populate("bookId", "title author coverImage").populate("userId", "name").limit(50),
+        Book.find({ available: { $gt: 0 } }).select("title author coverImage available").limit(50),
+        User.find().select("name email role").limit(50),
+      ]);
       const [totalBooks, issuedBooks, availableBooksAgg, registeredUsers] = await Promise.all([
         Book.countDocuments(),
         Transaction.countDocuments({ status: "issued" }),
@@ -18,12 +24,33 @@ const getStats = async (req, res, next) => {
 
       const availableBooks = availableBooksAgg[0]?.total || 0;
 
-      return res.json({ totalBooks, issuedBooks, availableBooks, registeredUsers });
+      return res.json({ 
+        totalBooks, 
+        issuedBooks, 
+        availableBooks, 
+        registeredUsers,
+        totalBooksList,
+        issuedBooksList,
+        availableBooksList,
+        registeredUsersList
+      });
     }
     
     // LIBRARIAN STATS
     if (user.role === "librarian") {
-      const [librarianBooks, todayIssues, pendingReturns] = await Promise.all([
+      const [librarianBooksList, todayIssuesList, pendingReturnsList, totalMembersList] = await Promise.all([
+        Book.find({ workspaceId: user._id }).select("title author coverImage").limit(50),
+        Transaction.find({ 
+          status: "issued",
+          issueDate: { $gte: new Date().setHours(0, 0, 0, 0) }
+        }).populate("bookId", "title author coverImage").populate("userId", "name").limit(50),
+        Transaction.find({ 
+          status: "issued", 
+          dueDate: { $lt: new Date() } 
+        }).populate("bookId", "title author coverImage").populate("userId", "name").limit(50),
+        User.find({ role: "student" }).select("name email").limit(50)
+      ]);
+      const [librarianBooks, todayIssues, pendingReturns, totalMembers] = await Promise.all([
         Book.countDocuments({ workspaceId: user._id }),
         Transaction.countDocuments({ 
           status: "issued",
@@ -33,33 +60,43 @@ const getStats = async (req, res, next) => {
           status: "issued", 
           dueDate: { $lt: new Date() } 
         }),
+        User.countDocuments({ role: "student" })
       ]);
 
       return res.json({ 
         librarianBooks: librarianBooks || 0, 
         todayIssues: todayIssues || 0, 
-        pendingReturns: pendingReturns || 0 
+        pendingReturns: pendingReturns || 0,
+        totalMembers: totalMembers || 0,
+        librarianBooksList,
+        todayIssuesList,
+        pendingReturnsList,
+        totalMembersList
       });
     }
     
     // STUDENT STATS
     if (user.role === "student") {
-      const [myBorrows, dueThisWeek, totalRead, pendingRequests] = await Promise.all([
-        Transaction.countDocuments({ userId: user._id, status: "issued" }),
-        Transaction.countDocuments({ 
+      const [myBorrowsList, dueThisWeekList, totalReadList, pendingRequestsList] = await Promise.all([
+        Transaction.find({ userId: user._id, status: "issued" }).populate("bookId", "title author coverImage"),
+        Transaction.find({ 
           userId: user._id, 
           status: "issued",
           dueDate: { $lt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
-        }),
-        Transaction.countDocuments({ userId: user._id, status: "returned" }),
-        Transaction.countDocuments({ userId: user._id, status: "requested" }),
+        }).populate("bookId", "title author coverImage dueDate"),
+        Transaction.find({ userId: user._id, status: "returned" }).populate("bookId", "title author coverImage"),
+        Transaction.find({ userId: user._id, status: "requested" }).populate("bookId", "title author coverImage"),
       ]);
 
       return res.json({ 
-        myBorrows: myBorrows || 0, 
-        dueThisWeek: dueThisWeek || 0, 
-        totalRead: totalRead || 0,
-        pendingRequests: pendingRequests || 0,
+        myBorrows: myBorrowsList.length || 0, 
+        dueThisWeek: dueThisWeekList.length || 0, 
+        totalRead: totalReadList.length || 0,
+        pendingRequests: pendingRequestsList.length || 0,
+        myBorrowsList,
+        dueThisWeekList,
+        totalReadList,
+        pendingRequestsList
       });
     }
     

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import StatsCard from "@/components/ui/StatsCard";
+import Modal from "@/components/ui/Modal";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const [timeline, setTimeline] = useState([]);
   const [notifications, setNotifications] = useState({ dueSoon: [], overdue: [] });
   const [dataLoading, setDataLoading] = useState(true);
+  const [activeModalContent, setActiveModalContent] = useState(null);
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -154,28 +156,48 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {user?.role === "admin" && (
           <>
-            <StatsCard label="Total books" value={stats?.totalBooks ?? "--"} role={user.role} />
-            <StatsCard label="Issued books" value={stats?.issuedBooks ?? "--"} role={user.role} />
-            <StatsCard label="Available" value={stats?.availableBooks ?? "--"} role={user.role} />
-            <StatsCard label="Users" value={stats?.registeredUsers ?? "--"} role={user.role} />
+            <StatsCard label="Total books" value={stats?.totalBooks ?? "--"} role={user.role} onClick={() => setActiveModalContent({ title: "Total Books", list: stats?.totalBooksList || [] })} />
+            <StatsCard label="Issued books" value={stats?.issuedBooks ?? "--"} role={user.role} onClick={() => setActiveModalContent({ title: "Issued Books", list: stats?.issuedBooksList || [] })} />
+            <StatsCard label="Available" value={stats?.availableBooks ?? "--"} role={user.role} onClick={() => setActiveModalContent({ title: "Available Books", list: stats?.availableBooksList || [] })} />
+            <StatsCard label="Users" value={stats?.registeredUsers ?? "--"} role={user.role} onClick={() => setActiveModalContent({ title: "Registered Users", list: stats?.registeredUsersList || [] })} />
           </>
         )}
         
         {user?.role === "librarian" && (
           <>
-            <StatsCard label="My Books" value={stats?.librarianBooks ?? "0"} role={user.role} />
-            <StatsCard label="Issued Today" value={stats?.todayIssues ?? "0"} role={user.role} />
-            <StatsCard label="Pending Returns" value={stats?.pendingReturns ?? "0"} role={user.role} />
-            <StatsCard label="Total Members" value={stats?.totalMembers ?? "--"} role={user.role} />
+            <StatsCard label="My Books" value={stats?.librarianBooks ?? "0"} role={user.role} onClick={() => setActiveModalContent({ title: "My Books", list: stats?.librarianBooksList || [] })} />
+            <StatsCard label="Issued Today" value={stats?.todayIssues ?? "0"} role={user.role} onClick={() => setActiveModalContent({ title: "Issued Today", list: stats?.todayIssuesList || [] })} />
+            <StatsCard label="Pending Returns" value={stats?.pendingReturns ?? "0"} role={user.role} onClick={() => setActiveModalContent({ title: "Pending Returns", list: stats?.pendingReturnsList || [] })} />
+            <StatsCard label="Total Members" value={stats?.totalMembers ?? "--"} role={user.role} onClick={() => setActiveModalContent({ title: "Total Members", list: stats?.totalMembersList || [] })} />
           </>
         )}
         
         {user?.role === "student" && (
           <>
-            <StatsCard label="Books Borrowed" value={stats?.myBorrows ?? "0"} role={user.role} />
-            <StatsCard label="Pending Requests" value={stats?.pendingRequests ?? "0"} role={user.role} />
-            <StatsCard label="Due This Week" value={stats?.dueThisWeek ?? "0"} role={user.role} />
-            <StatsCard label="Total Read" value={stats?.totalRead ?? "0"} role={user.role} />
+            <StatsCard 
+              label="Books Borrowed" 
+              value={stats?.myBorrows ?? "0"} 
+              role={user.role} 
+              onClick={() => setActiveModalContent({ title: "Books Borrowed", list: stats?.myBorrowsList || [] })} 
+            />
+            <StatsCard 
+              label="Pending Requests" 
+              value={stats?.pendingRequests ?? "0"} 
+              role={user.role} 
+              onClick={() => setActiveModalContent({ title: "Pending Requests", list: stats?.pendingRequestsList || [] })} 
+            />
+            <StatsCard 
+              label="Due This Week" 
+              value={stats?.dueThisWeek ?? "0"} 
+              role={user.role} 
+              onClick={() => setActiveModalContent({ title: "Due This Week", list: stats?.dueThisWeekList || [] })} 
+            />
+            <StatsCard 
+              label="Total Read" 
+              value={stats?.totalRead ?? "0"} 
+              role={user.role} 
+              onClick={() => setActiveModalContent({ title: "Total Read", list: stats?.totalReadList || [] })} 
+            />
           </>
         )}
       </div>
@@ -450,6 +472,96 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* ── Generic Dashboard Modal ── */}
+      {activeModalContent && (
+        <div className="relative z-[100]">
+          <Modal
+            open={!!activeModalContent}
+            onClose={() => setActiveModalContent(null)}
+            title={activeModalContent.title}
+          >
+          <div className="flex flex-col gap-3">
+            {activeModalContent.list.length > 0 ? (
+              activeModalContent.list.map((item) => {
+                const isUser = !!item.email;
+                const isBook = !!item.title && !item.bookId;
+                const isTransaction = !!item.bookId;
+
+                const displayTitle = isUser ? item.name : (isBook ? item.title : (item.bookId?.title || "Unknown Book"));
+                const displaySubtitle = isUser ? item.email : (isBook ? item.author : (item.bookId?.author || "Unknown Author"));
+                const displayImg = isUser ? item.avatar : (isBook ? item.coverImage : item.bookId?.coverImage);
+                const emoji = isUser ? "👤" : "📚";
+
+                return (
+                  <div
+                    key={item._id}
+                    className={`flex items-center gap-4 rounded-xl p-3 border transition-colors ${
+                      isDark
+                        ? "bg-slate-800/50 border-slate-700 hover:bg-slate-700/50"
+                        : "bg-slate-50 border-slate-100 hover:bg-slate-100"
+                    }`}
+                  >
+                    {/* Tiny Cover Image or Avatar */}
+                    <div className="h-12 w-9 flex-shrink-0 rounded bg-slate-200 overflow-hidden shadow-sm">
+                      {displayImg ? (
+                        <img src={displayImg} alt={displayTitle} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className={`h-full w-full flex items-center justify-center text-xs ${isDark ? "bg-slate-700 text-slate-500" : "bg-slate-200 text-slate-400"}`}>
+                          {emoji}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`truncate text-sm font-bold ${isDark ? "text-white" : "text-slate-800"}`}>
+                        {displayTitle}
+                      </p>
+                      <p className={`truncate text-xs ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                        {displaySubtitle}
+                      </p>
+                    </div>
+
+                    {/* Date/Status tag */}
+                    <div className="flex-shrink-0 text-right">
+                      {isTransaction && (
+                        <>
+                          <p className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? "text-teal-400" : "text-teal-600"}`}>
+                            {item.status}
+                          </p>
+                          {item.dueDate && (
+                            <p className={`text-[10px] mt-0.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                              Due: {new Date(item.dueDate).toLocaleDateString()}
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {isUser && (
+                        <p className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? "text-indigo-400" : "text-indigo-600"}`}>
+                          {item.role}
+                        </p>
+                      )}
+                      {isBook && item.available !== undefined && (
+                        <p className={`text-[10px] font-semibold tracking-widest ${isDark ? "text-teal-400" : "text-teal-600"}`}>
+                          Available: {item.available}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 opacity-70">
+                <span className="text-4xl mb-2">🤷‍♂️</span>
+                <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>No items found for this category.</p>
+              </div>
+            )}
+          </div>
+          </Modal>
+        </div>
+      )}
+
     </AppLayout>
   );
 }
