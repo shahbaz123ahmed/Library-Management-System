@@ -28,21 +28,16 @@ function LoginContent() {
         // Wait, useGoogleLogin with flow: 'implicit' returns an access_token, not id_token.
         // To get an id_token, we use credential from <GoogleLogin> or we fetch the userinfo.
         // Let's fetch user info and send it to backend, OR use the access token in backend.
-        const userInfo = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        });
-        
-        // Let's send a custom request to our backend with the user info
+        // We only send the access token to our backend. The backend securely verifies it.
         const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/auth/google`, {
-          // Since we changed backend to expect an idToken, we need to adapt backend or just use a specialized route.
-          // Let's pass the google token and handle it.
-          token: tokenResponse.access_token,
-          userInfo: userInfo.data // Fallback for our backend
+          token: tokenResponse.access_token
         });
         
         // Now login to context
         oauthLogin(res.data.token, res.data);
         toast.success("Successfully logged in with Google!");
+        // Immediately redirect for a faster apparent load time
+        router.replace("/dashboard");
       } catch (err) {
         console.error(err);
         toast.error("Google login failed");

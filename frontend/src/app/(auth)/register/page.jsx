@@ -31,6 +31,7 @@ function RegisterContent() {
         
         oauthLogin(res.data.token, res.data);
         toast.success("Successfully signed up/logged in with Google!");
+        router.replace("/dashboard");
       } catch (err) {
         console.error(err);
         toast.error("Google signup failed");
