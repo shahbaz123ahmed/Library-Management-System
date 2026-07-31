@@ -1,4 +1,4 @@
-# Library Management System
+# Welcome to The Lumen Library Management System
 
 Full-stack LMS built with Next.js, Tailwind CSS, Node.js/Express, MongoDB, and JWT authentication.
 
